@@ -101,6 +101,7 @@ export type Database = {
       }
       learning_resources: {
         Row: {
+          additional_authors: Json | null
           checking_items: Json | null
           code: string
           created_at: string
@@ -117,11 +118,13 @@ export type Database = {
           school: string
           status: string
           sub_office: string
+          submitted_by_email: string | null
           title: string
           updated_at: string
           week: string | null
         }
         Insert: {
+          additional_authors?: Json | null
           checking_items?: Json | null
           code: string
           created_at?: string
@@ -138,11 +141,13 @@ export type Database = {
           school?: string
           status?: string
           sub_office?: string
+          submitted_by_email?: string | null
           title: string
           updated_at?: string
           week?: string | null
         }
         Update: {
+          additional_authors?: Json | null
           checking_items?: Json | null
           code?: string
           created_at?: string
@@ -159,6 +164,7 @@ export type Database = {
           school?: string
           status?: string
           sub_office?: string
+          submitted_by_email?: string | null
           title?: string
           updated_at?: string
           week?: string | null

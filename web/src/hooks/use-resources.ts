@@ -5,6 +5,7 @@ import {
   CHECKLIST_ITEMS,
   SEED_RESOURCES,
   createEmptyChecklist,
+  type AdditionalAuthor,
   type ChecklistItem,
   type ChecklistItemKey,
   type LearningResource,
@@ -22,6 +23,8 @@ export interface NewResourceInput {
   week: string;
   developer: string;
   position: string;
+  additionalAuthors?: AdditionalAuthor[];
+  submittedByEmail?: string;
   division: string;
   school: string;
   subOffice: string;
@@ -37,6 +40,7 @@ export interface EditResourceInput {
   week: string;
   developer: string;
   position: string;
+  additionalAuthors?: AdditionalAuthor[];
   school: string;
   subOffice: string;
 }
@@ -53,6 +57,8 @@ interface ResourceRow {
   week: string | null;
   developer: string;
   position: string | null;
+  additional_authors: AdditionalAuthor[] | null;
+  submitted_by_email: string | null;
   division: string;
   school: string;
   sub_office: string;
@@ -82,6 +88,8 @@ function mapRowToResource(row: ResourceRow, history: HistoryRow[]): LearningReso
     week: row.week ?? "",
     developer: row.developer,
     position: row.position ?? "",
+    additionalAuthors: Array.isArray(row.additional_authors) ? row.additional_authors : [],
+    submittedByEmail: row.submitted_by_email ?? undefined,
     division: row.division,
     school: row.school,
     subOffice: row.sub_office,
@@ -134,6 +142,7 @@ async function seedIfEmpty(): Promise<void> {
         week: resource.week,
         developer: resource.developer,
         position: resource.position,
+        additional_authors: [],
         division: resource.division,
         school: resource.school,
         sub_office: resource.subOffice,
@@ -217,6 +226,7 @@ export function useResources() {
     const serial = Date.now().toString().slice(-4);
     const created: LearningResource = {
       ...input,
+      additionalAuthors: input.additionalAuthors ?? [],
       id: crypto.randomUUID(),
       code: `LR-${new Date().getFullYear()}-${serial}`,
       dateSubmitted: now,
@@ -247,6 +257,8 @@ export function useResources() {
           week: created.week,
           developer: created.developer,
           position: created.position,
+          additional_authors: created.additionalAuthors,
+          submitted_by_email: created.submittedByEmail ?? null,
           division: created.division,
           school: created.school,
           sub_office: created.subOffice,
@@ -409,6 +421,7 @@ export function useResources() {
           week: input.week,
           developer: input.developer,
           position: input.position,
+          additional_authors: input.additionalAuthors ?? [],
           school: input.school,
           sub_office: input.subOffice,
           updated_at: now,

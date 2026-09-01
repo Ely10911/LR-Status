@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { AdditionalAuthorsSection } from "@/components/lr/AdditionalAuthorsSection";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +38,7 @@ import {
   QUARTERS,
   RESOURCE_TYPES,
   WEEKS,
+  type AdditionalAuthor,
   type LearningResource,
   type ResourceType,
 } from "@/lib/lr";
@@ -74,6 +76,7 @@ export function EditResourceDialog({
   onOpenChange,
   onEdit,
 }: EditResourceDialogProps) {
+  const [additionalAuthors, setAdditionalAuthors] = useState<AdditionalAuthor[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -106,6 +109,7 @@ export function EditResourceDialog({
         school: resource.school,
         subOffice: resource.subOffice,
       });
+      setAdditionalAuthors(resource.additionalAuthors ?? []);
     }
   }, [resource, open, form]);
 
@@ -122,6 +126,7 @@ export function EditResourceDialog({
       week: values.week,
       developer: values.developer,
       position: values.position,
+      additionalAuthors: additionalAuthors.filter((a) => a.name.trim().length > 0),
       school: values.school,
       subOffice: values.subOffice,
     });
@@ -336,6 +341,8 @@ export function EditResourceDialog({
                 </FormItem>
               )}
             />
+
+            <AdditionalAuthorsSection authors={additionalAuthors} onChange={setAdditionalAuthors} />
 
             <FormField
               control={form.control}

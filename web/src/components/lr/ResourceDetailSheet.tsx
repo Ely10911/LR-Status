@@ -182,6 +182,27 @@ export function ResourceDetailSheet({
             <Building2 className="h-4 w-4" />
             {resource.division}
           </p>
+          {(resource.additionalAuthors ?? []).length > 0 && (
+            <div className="border-t pt-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Additional Authors
+              </p>
+              <ul className="mt-1.5 space-y-2">
+                {(resource.additionalAuthors ?? []).map((author, index) => (
+                  <li key={`${author.name}-${index}`} className="text-sm">
+                    <p className="flex items-center gap-2 font-medium">
+                      <User2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      {author.name}
+                    </p>
+                    <p className="ml-5 text-xs text-muted-foreground">
+                      {author.school}
+                      {author.subOffice ? ` · ${author.subOffice}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Checklist Section — shown when status is for-checking */}

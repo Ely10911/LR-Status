@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { AdditionalAuthorsSection } from "@/components/lr/AdditionalAuthorsSection";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,6 +38,7 @@ import {
   QUARTERS,
   RESOURCE_TYPES,
   WEEKS,
+  type AdditionalAuthor,
   type ResourceType,
 } from "@/lib/lr";
 import {
@@ -68,6 +71,7 @@ interface AddResourceDialogProps {
 }
 
 export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceDialogProps) {
+  const [additionalAuthors, setAdditionalAuthors] = useState<AdditionalAuthor[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -94,6 +98,7 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceD
       week: values.week,
       developer: values.developer,
       position: values.position,
+      additionalAuthors: additionalAuthors.filter((a) => a.name.trim().length > 0),
       division: SDO_BATANGAS,
       school: values.school,
       subOffice: values.subOffice,
@@ -102,6 +107,7 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceD
       description: `Status set to Submitted — SDO Batangas. Track its progress from the table.`,
     });
     form.reset();
+    setAdditionalAuthors([]);
     onOpenChange(false);
   };
 
@@ -297,6 +303,8 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceD
                 </FormItem>
               )}
             />
+
+            <AdditionalAuthorsSection authors={additionalAuthors} onChange={setAdditionalAuthors} />
 
             <FormField
               control={form.control}

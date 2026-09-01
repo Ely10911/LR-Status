@@ -128,6 +128,16 @@ const Index = () => {
   const [visitorError, setVisitorError] = useState<string>("");
   const [visitorSearch, setVisitorSearch] = useState<string>("");
 
+  // Viewers only see the learning resources they submitted themselves.
+  const visibleResources = useMemo(() => {
+    if (isAdmin) return resources;
+    const email = user?.email?.trim().toLowerCase();
+    if (!email) return [];
+    return resources.filter(
+      (r) => (r.submittedByEmail ?? "").trim().toLowerCase() === email,
+    );
+  }, [resources, isAdmin, user]);
+
   const counts = useMemo(() => {
     const map: Record<LRStatus, number> = {
       submitted: 0,
@@ -136,18 +146,18 @@ const Index = () => {
       published: 0,
       disapproved: 0,
     };
-    for (const resource of resources) map[resource.status] += 1;
+    for (const resource of visibleResources) map[resource.status] += 1;
     return map;
-  }, [resources]);
+  }, [visibleResources]);
 
   const eligibleForCertificate = useMemo(
-    () => resources.filter((r) => r.status === "approved" || r.status === "published"),
-    [resources],
+    () => visibleResources.filter((r) => r.status === "approved" || r.status === "published"),
+    [visibleResources],
   );
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return resources.filter((resource) => {
+    return visibleResources.filter((resource) => {
       if (statusFilter !== ALL && resource.status !== statusFilter) return false;
       if (areaFilter !== ALL && resource.learningArea !== areaFilter) return false;
       if (gradeFilter !== ALL && resource.gradeLevel !== gradeFilter) return false;
@@ -161,7 +171,7 @@ const Index = () => {
         resource.subOffice.toLowerCase().includes(query)
       );
     });
-  }, [resources, search, statusFilter, areaFilter, gradeFilter]);
+  }, [visibleResources, search, statusFilter, areaFilter, gradeFilter]);
 
   const selected: LearningResource | null =
     resources.find((resource) => resource.id === selectedId) ?? null;
@@ -169,7 +179,7 @@ const Index = () => {
   const editTarget: LearningResource | null =
     resources.find((resource) => resource.id === editTargetId) ?? null;
 
-  const total = resources.length;
+  const total = visibleResources.length;
 
   // ---- Report summary data ----
   const statusPieData = useMemo(
@@ -184,43 +194,43 @@ const Index = () => {
 
   const learningAreaData = useMemo(() => {
     const areaMap = new Map<string, number>();
-    for (const r of resources) {
+    for (const r of visibleResources) {
       areaMap.set(r.learningArea, (areaMap.get(r.learningArea) ?? 0) + 1);
     }
     return Array.from(areaMap.entries())
       .map(([area, count]) => ({ area, count }))
       .sort((a, b) => b.count - a.count);
-  }, [resources]);
+  }, [visibleResources]);
 
   const resourceTypeData = useMemo(() => {
     const typeMap = new Map<string, number>();
-    for (const r of resources) {
+    for (const r of visibleResources) {
       typeMap.set(r.resourceType, (typeMap.get(r.resourceType) ?? 0) + 1);
     }
     return Array.from(typeMap.entries())
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count);
-  }, [resources]);
+  }, [visibleResources]);
 
   const gradeLevelData = useMemo(() => {
     const gradeMap = new Map<string, number>();
-    for (const r of resources) {
+    for (const r of visibleResources) {
       gradeMap.set(r.gradeLevel, (gradeMap.get(r.gradeLevel) ?? 0) + 1);
     }
     return Array.from(gradeMap.entries())
       .map(([grade, count]) => ({ grade, count }))
       .sort((a, b) => b.count - a.count);
-  }, [resources]);
+  }, [visibleResources]);
 
   const schoolData = useMemo(() => {
     const schoolMap = new Map<string, number>();
-    for (const r of resources) {
+    for (const r of visibleResources) {
       schoolMap.set(r.school, (schoolMap.get(r.school) ?? 0) + 1);
     }
     return Array.from(schoolMap.entries())
       .map(([school, count]) => ({ school, count }))
       .sort((a, b) => b.count - a.count);
-  }, [resources]);
+  }, [visibleResources]);
 
   // Monthly submission trend (last 6 months)
   const monthlyTrendData = useMemo(() => {
@@ -236,13 +246,13 @@ const Index = () => {
         approved: 0,
       });
     }
-    for (const r of resources) {
+    for (const r of visibleResources) {
       const d = new Date(r.dateSubmitted);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const m = months.find((m) => m.key === key);
       if (m) m.submitted += 1;
     }
-    for (const r of resources) {
+    for (const r of visibleResources) {
       for (const event of r.history) {
         if (event.status === "approved") {
           const d = new Date(event.date);
@@ -253,7 +263,7 @@ const Index = () => {
       }
     }
     return months;
-  }, [resources]);
+  }, [visibleResources]);
 
   const openDetail = (id: string) => {
     setSelectedId(id);
@@ -345,10 +355,11 @@ const Index = () => {
       "School",
       "Sub-Office",
       "Division",
+      "Additional Authors",
       "Date Submitted",
       "Status",
     ];
-    const rows = resources.map((r) => [
+    const rows = visibleResources.map((r) => [
       r.code,
       `"${r.title}"`,
       r.resourceType,
@@ -361,6 +372,7 @@ const Index = () => {
       `"${r.school}"`,
       `"${r.subOffice}"`,
       r.division,
+      `"${(r.additionalAuthors ?? []).map((a) => a.name).join("; ")}"`,
       formatDate(r.dateSubmitted),
       STATUS_CONFIG[r.status].label,
     ]);
@@ -513,8 +525,9 @@ const Index = () => {
           <div className="mt-4 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              You are signed in as a <strong>Viewer</strong>. You can browse, check
-              status, submit learning resources, and request certificates.
+              You are signed in as a <strong>Viewer</strong>. You can browse your
+              submitted learning resources, check their status, and request
+              certificates.
             </div>
             <div className="flex items-center gap-2">
               <Button

@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
 import type { NewResourceInput } from "@/hooks/use-resources";
 import {
   GRADE_LEVELS,
@@ -77,6 +78,7 @@ interface SubmitLRDialogProps {
  * to attach the actual resource files.
  */
 export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogProps) {
+  const { user } = useAuth();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -103,6 +105,8 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
       week: values.week,
       developer: values.developer,
       position: values.position,
+      additionalAuthors: [],
+      submittedByEmail: user?.email,
       division: SDO_BATANGAS,
       school: values.school,
       subOffice: values.subOffice,

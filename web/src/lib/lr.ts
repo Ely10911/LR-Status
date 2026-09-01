@@ -49,7 +49,16 @@ export type ResourceType =
   | "Video Lesson"
   | "Storybook"
   | "eBook"
-  | "Kasaysayan";
+  | "Kasaysayan"
+  | "Strategic Intervention Materials (SIMs)"
+  | "Interactive Resources & Apps";
+
+/** A co-author credited on the resource, with their own office affiliation. */
+export interface AdditionalAuthor {
+  name: string;
+  subOffice: string;
+  school: string;
+}
 
 export interface LearningResource {
   id: string;
@@ -64,6 +73,10 @@ export interface LearningResource {
   developer: string;
   /** Position / rank of the developer (e.g. Teacher I, Master Teacher I). */
   position: string;
+  /** Co-authors credited on the resource (admin-managed). */
+  additionalAuthors: AdditionalAuthor[];
+  /** Email of the viewer account that submitted this resource (for the viewer portal). */
+  submittedByEmail?: string;
   division: string;
   /** School where the resource was developed. */
   school: string;
@@ -212,6 +225,8 @@ export const RESOURCE_TYPES: ResourceType[] = [
   "Storybook",
   "eBook",
   "Kasaysayan",
+  "Strategic Intervention Materials (SIMs)",
+  "Interactive Resources & Apps",
 ];
 
 export const LEARNING_AREAS = [
@@ -221,6 +236,7 @@ export const LEARNING_AREAS = [
   "Science",
   "Araling Panlipunan",
   "Edukasyon sa Pagpapakatao",
+  "GMRC",
   "Makabansa",
   "MAPEH",
   "TLE / EPP",
@@ -279,17 +295,13 @@ export const POSITIONS = [
   "School Principal IV",
 ];
 
-/** Week options within a quarter. */
-export const WEEKS = [
-  "Week 1",
-  "Week 2",
-  "Week 3",
-  "Week 4",
-  "Week 5",
-  "Week 6",
-  "Week 7",
-  "Week 8",
+/** Week options within a quarter: individual weeks plus duration ranges (e.g. Week 1-3). */
+export const WEEKS: string[] = [
   "All Weeks",
+  ...Array.from({ length: 8 }, (_, i) => `Week ${i + 1}`),
+  ...Array.from({ length: 8 }, (_, s) => s + 1).flatMap((start) =>
+    Array.from({ length: 8 - start }, (_, i) => `Week ${start}-${start + 1 + i}`),
+  ),
 ];
 
 export function formatDate(iso: string): string {
@@ -309,7 +321,10 @@ function daysAgo(days: number): string {
 
 let seedCounter = 0;
 function seedResource(
-  partial: Omit<LearningResource, "id" | "code" | "history" | "dateSubmitted" | "checklistItems"> & {
+  partial: Omit<
+    LearningResource,
+    "id" | "code" | "history" | "dateSubmitted" | "checklistItems" | "additionalAuthors"
+  > & {
     submittedDaysAgo: number;
     checklistItems?: ChecklistItem[];
     trail: { status: LRStatus; daysAgo: number; remarks: string; checklistItems?: ChecklistItem[] | null }[];
@@ -319,6 +334,7 @@ function seedResource(
   const { submittedDaysAgo, trail, checklistItems, ...rest } = partial;
   return {
     ...rest,
+    additionalAuthors: [],
     checklistItems: checklistItems ?? createEmptyChecklist(),
     id: `seed-${seedCounter}`,
     code: `LR-2026-${String(seedCounter).padStart(4, "0")}`,
