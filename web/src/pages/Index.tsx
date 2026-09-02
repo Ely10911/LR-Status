@@ -39,6 +39,7 @@ import { CertificateRequestDialog } from "@/components/lr/CertificateRequestDial
 import { CertificateRequestsSection } from "@/components/lr/CertificateRequestsSection";
 import { ViewerCertificateRequests } from "@/components/lr/ViewerCertificateRequests";
 import { EditResourceDialog } from "@/components/lr/EditResourceDialog";
+import { NotificationBell } from "@/components/lr/NotificationBell";
 import { ResourceDetailSheet } from "@/components/lr/ResourceDetailSheet";
 import { StatusBadge } from "@/components/lr/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -440,6 +441,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <NotificationBell />
               {/* User badge */}
               <div className="hidden flex-col items-end sm:flex">
                 <span className="text-sm font-semibold text-primary-foreground">

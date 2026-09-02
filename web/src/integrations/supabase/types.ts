@@ -171,6 +171,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          audience: string
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          resource_code: string | null
+          resource_id: string | null
+          resource_status: string | null
+          target_email: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          audience: string
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          resource_code?: string | null
+          resource_id?: string | null
+          resource_status?: string | null
+          target_email?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          resource_code?: string | null
+          resource_id?: string | null
+          resource_status?: string | null
+          target_email?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       resource_history: {
         Row: {
           checking_items: Json | null

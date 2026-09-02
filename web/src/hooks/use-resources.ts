@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { pushNotification } from "@/lib/notification";
 import { supabase } from "@/lib/supabase";
 import {
   CHECKLIST_ITEMS,
   SEED_RESOURCES,
+  STATUS_CONFIG,
   createEmptyChecklist,
   type AdditionalAuthor,
   type ChecklistItem,
@@ -206,6 +208,12 @@ export function useResources() {
   const [resources, setResources] = useState<LearningResource[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Mirror of resources for lookups inside event callbacks.
+  const resourcesRef = useRef<LearningResource[]>([]);
+  useEffect(() => {
+    resourcesRef.current = resources;
+  }, [resources]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -276,6 +284,19 @@ export function useResources() {
           remarks: "Submission received and logged in the tracker.",
         });
       }
+
+      // Notify the admin that a viewer submitted a new LR.
+      if (created.submittedByEmail) {
+        await pushNotification({
+          audience: "admin",
+          type: "new-submission",
+          title: created.title,
+          message: `New learning resource submitted by ${created.developer} (${created.school}).`,
+          resourceId: created.id,
+          resourceCode: created.code,
+          resourceStatus: created.status,
+        });
+      }
     })();
     return created;
   }, []);
@@ -316,6 +337,21 @@ export function useResources() {
           date: now,
           remarks: remarks.trim() || "Status updated.",
         });
+
+        // Notify the submitting viewer that their LR status changed.
+        const target = resourcesRef.current.find((r) => r.id === id);
+        if (target?.submittedByEmail) {
+          await pushNotification({
+            audience: "viewer",
+            targetEmail: target.submittedByEmail,
+            type: "status-change",
+            title: target.title,
+            message: `Status of your submitted LR "${target.title}" (${target.code}) is now ${STATUS_CONFIG[status].label}.${remarks.trim() ? ` Remarks: ${remarks.trim()}` : ""}`,
+            resourceId: id,
+            resourceCode: target.code,
+            resourceStatus: status,
+          });
+        }
       })();
     },
     [],

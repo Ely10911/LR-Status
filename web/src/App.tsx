@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { CertificatesProvider } from "@/hooks/use-certificates";
+import { NotificationsProvider } from "@/hooks/use-notifications";
 import { VisitorProvider } from "@/hooks/use-visitors";
 
 import Index from "./pages/Index";
@@ -31,6 +32,7 @@ function ProtectedRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <NotificationsProvider>
       <VisitorProvider>
         <CertificatesProvider>
           <TooltipProvider>
@@ -44,6 +46,7 @@ const App = () => (
           </TooltipProvider>
         </CertificatesProvider>
       </VisitorProvider>
+      </NotificationsProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
