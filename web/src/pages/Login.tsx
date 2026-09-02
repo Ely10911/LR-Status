@@ -1,29 +1,53 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Lock, Mail, ShieldCheck, User2 } from "lucide-react";
+import {
+  Eye,
+  Loader2,
+  Lock,
+  Mail,
+  School as SchoolIcon,
+  ShieldCheck,
+  User2,
+  UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useVisitors } from "@/hooks/use-visitors";
+import { SCHOOLS_BY_SUB_OFFICE, SUB_OFFICES } from "@/lib/schools";
 import { cn } from "@/lib/utils";
 
 type LoginMode = "admin" | "viewer";
+type ViewerAction = "signin" | "register";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
-  const { loginAdmin, loginViewer } = useAuth();
+  const { loginAdmin, loginViewer, registerViewer } = useAuth();
   const { logVisitor } = useVisitors();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<LoginMode>("admin");
+  const [viewerAction, setViewerAction] = useState<ViewerAction>("signin");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [viewerName, setViewerName] = useState<string>("");
   const [viewerEmail, setViewerEmail] = useState<string>("");
+  const [regName, setRegName] = useState<string>("");
+  const [regSubOffice, setRegSubOffice] = useState<string>("");
+  const [regSchool, setRegSchool] = useState<string>("");
+  const [regEmail, setRegEmail] = useState<string>("");
+  const [pending, setPending] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
@@ -51,7 +75,7 @@ export default function Login() {
     }
   };
 
-  const handleViewerLogin = (e: React.FormEvent) => {
+  const handleViewerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -59,7 +83,7 @@ export default function Login() {
     const trimmedEmail = viewerEmail.trim();
 
     if (trimmedName.length < 2) {
-      setError("Please enter your full name.");
+      setError("Please enter your complete name.");
       return;
     }
     if (!trimmedEmail) {
@@ -71,10 +95,67 @@ export default function Login() {
       return;
     }
 
-    loginViewer(trimmedName, trimmedEmail);
+    setPending(true);
+    const result = await loginViewer(trimmedName, trimmedEmail);
+    setPending(false);
+
+    if (!result.ok) {
+      setError(result.error ?? "Sign in failed. Please try again.");
+      return;
+    }
+
     logVisitor(trimmedName, trimmedEmail);
     toast.success(`Welcome, ${trimmedName}`, {
       description: "Viewer access — browse resource statuses.",
+    });
+    navigate("/");
+  };
+
+  const handleViewerRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const trimmedName = regName.trim();
+    const trimmedEmail = regEmail.trim();
+
+    if (trimmedName.length < 2) {
+      setError("Please enter your complete name.");
+      return;
+    }
+    if (!regSubOffice) {
+      setError("Please select your sub-office.");
+      return;
+    }
+    if (!regSchool) {
+      setError("Please select your school.");
+      return;
+    }
+    if (!trimmedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setPending(true);
+    const result = await registerViewer({
+      name: trimmedName,
+      email: trimmedEmail,
+      school: regSchool,
+      subOffice: regSubOffice,
+    });
+    setPending(false);
+
+    if (!result.ok) {
+      setError(result.error ?? "Registration failed. Please try again.");
+      return;
+    }
+
+    logVisitor(trimmedName, trimmedEmail);
+    toast.success(`Welcome, ${trimmedName}`, {
+      description: "Your viewer account has been registered.",
     });
     navigate("/");
   };
@@ -86,6 +167,16 @@ export default function Login() {
     setPassword("");
     setViewerName("");
     setViewerEmail("");
+    setViewerAction("signin");
+    setRegName("");
+    setRegSubOffice("");
+    setRegSchool("");
+    setRegEmail("");
+  };
+
+  const switchViewerAction = (action: ViewerAction) => {
+    setViewerAction(action);
+    setError("");
   };
 
   return (
@@ -219,59 +310,224 @@ export default function Login() {
             </form>
           )}
 
-          {/* Viewer login form */}
+          {/* Viewer sign in / register */}
           {mode === "viewer" && (
-            <form
-              onSubmit={handleViewerLogin}
-              className="space-y-5 rounded-2xl border border-white/10 bg-card p-6 text-card-foreground shadow-2xl shadow-black/30"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="viewerName">Your Name</Label>
-                <div className="relative">
-                  <User2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="viewerName"
-                    value={viewerName}
-                    onChange={(e) => setViewerName(e.target.value)}
-                    placeholder="e.g. Juan A. Dela Cruz"
-                    autoFocus
-                    className="pl-9"
-                  />
-                </div>
+            <div className="space-y-4">
+              {/* Sign in / register toggle */}
+              <div className="flex rounded-xl border border-white/10 bg-card/50 p-1">
+                <button
+                  type="button"
+                  onClick={() => switchViewerAction("signin")}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all",
+                    viewerAction === "signin"
+                      ? "bg-accent text-accent-foreground shadow"
+                      : "text-primary-foreground/60 hover:text-primary-foreground",
+                  )}
+                >
+                  <Eye className="h-4 w-4" />
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchViewerAction("register")}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all",
+                    viewerAction === "register"
+                      ? "bg-accent text-accent-foreground shadow"
+                      : "text-primary-foreground/60 hover:text-primary-foreground",
+                  )}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Register
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="viewerEmail">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="viewerEmail"
-                    type="email"
-                    value={viewerEmail}
-                    onChange={(e) => setViewerEmail(e.target.value)}
-                    placeholder="e.g. juan.delacruz@deped.gov.ph"
-                    autoComplete="email"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
+              {viewerAction === "signin" ? (
+                <form
+                  onSubmit={handleViewerLogin}
+                  className="space-y-5 rounded-2xl border border-white/10 bg-card p-6 text-card-foreground shadow-2xl shadow-black/30"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    Sign in using the complete name and email address you
+                    registered.
+                  </p>
 
-              {error && (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                  {error}
-                </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="viewerName">Complete Name</Label>
+                    <div className="relative">
+                      <User2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="viewerName"
+                        value={viewerName}
+                        onChange={(e) => setViewerName(e.target.value)}
+                        placeholder="e.g. Juan A. Dela Cruz"
+                        autoFocus
+                        disabled={pending}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="viewerEmail">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="viewerEmail"
+                        type="email"
+                        value={viewerEmail}
+                        onChange={(e) => setViewerEmail(e.target.value)}
+                        placeholder="e.g. juan.delacruz@deped.gov.ph"
+                        autoComplete="email"
+                        disabled={pending}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      {error}
+                    </p>
+                  )}
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={pending}
+                    className="w-full gap-2 bg-primary hover:bg-primary/90"
+                  >
+                    {pending ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                    Sign In as Viewer
+                  </Button>
+                </form>
+              ) : (
+                <form
+                  onSubmit={handleViewerRegister}
+                  className="space-y-5 rounded-2xl border border-white/10 bg-card p-6 text-card-foreground shadow-2xl shadow-black/30"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    Register once to submit learning resources and track their
+                    status. You will sign in with your registered name and email.
+                  </p>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="regName">Complete Name</Label>
+                    <div className="relative">
+                      <User2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="regName"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        placeholder="e.g. Juan A. Dela Cruz"
+                        autoComplete="name"
+                        autoFocus
+                        disabled={pending}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="regSubOffice">Sub-Office / Unit</Label>
+                    <Select
+                      onValueChange={(value) => {
+                        setRegSubOffice(value);
+                        setRegSchool("");
+                      }}
+                      value={regSubOffice}
+                      disabled={pending}
+                    >
+                      <SelectTrigger id="regSubOffice">
+                        <SelectValue placeholder="Select sub-office" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUB_OFFICES.map((office) => (
+                          <SelectItem key={office} value={office}>
+                            {office}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="regSchool">School</Label>
+                    <div className="relative">
+                      <SchoolIcon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Select
+                        onValueChange={setRegSchool}
+                        value={regSchool}
+                        disabled={pending || !regSubOffice}
+                      >
+                        <SelectTrigger id="regSchool" className="pl-9">
+                          <SelectValue
+                            placeholder={
+                              regSubOffice ? "Select school" : "Select a sub-office first"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(SCHOOLS_BY_SUB_OFFICE[regSubOffice] ?? []).map((school) => (
+                            <SelectItem key={school} value={school}>
+                              {school}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="regEmail">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="regEmail"
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="e.g. juan.delacruz@deped.gov.ph"
+                        autoComplete="email"
+                        disabled={pending}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      {error}
+                    </p>
+                  )}
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={pending}
+                    className="w-full gap-2 bg-primary hover:bg-primary/90"
+                  >
+                    {pending ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <UserPlus className="h-5 w-5" />
+                    )}
+                    Create Viewer Account
+                  </Button>
+                </form>
               )}
-
-              <Button type="submit" size="lg" className="w-full gap-2 bg-primary hover:bg-primary/90">
-                <Eye className="h-5 w-5" />
-                Sign In as Viewer
-              </Button>
-            </form>
+            </div>
           )}
 
           <p className="mt-6 text-center text-xs text-primary-foreground/50">
-            Only Admin users can add and update learning resources. All
-            resources are submitted by SDO Batangas.
+            Viewers must register before signing in. Only Admin users can add
+            and update learning resources. All resources are submitted by SDO
+            Batangas.
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ExternalLink, UploadCloud } from "lucide-react";
@@ -94,6 +95,20 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
       subOffice: "",
     },
   });
+
+  // Prefill from the viewer's registration (developer name, sub-office, school).
+  useEffect(() => {
+    if (!open) return;
+    if (user?.name && !form.getValues("developer")) {
+      form.setValue("developer", user.name);
+    }
+    if (user?.subOffice && !form.getValues("subOffice")) {
+      form.setValue("subOffice", user.subOffice);
+    }
+    if (user?.school && !form.getValues("school")) {
+      form.setValue("school", user.school);
+    }
+  }, [open, user, form]);
 
   const handleSubmit = (values: FormValues) => {
     onSubmit({
