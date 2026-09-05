@@ -1,4 +1,4 @@
-import { UploadCloud, RefreshCcw, CheckCheck, Bell, Inbox } from "lucide-react";
+import { UploadCloud, RefreshCcw, Trash2, Bell, Inbox } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,10 +43,7 @@ function NotificationItem({
     <button
       type="button"
       onClick={() => onRead(notification.id)}
-      className={cn(
-        "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/50",
-        !notification.read && "bg-primary/5",
-      )}
+      className="flex w-full items-start gap-3 bg-primary/5 px-4 py-3 text-left transition-colors hover:bg-accent/50"
     >
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
         <NotificationIcon notification={notification} />
@@ -54,9 +51,7 @@ function NotificationItem({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{notification.title}</span>
-          {!notification.read && (
-            <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500" aria-hidden />
-          )}
+          <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500" aria-hidden />
         </span>
         <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">
           {notification.message}
@@ -80,7 +75,7 @@ function NotificationItem({
  * user's notifications (admin: new submissions; viewer: status changes).
  */
 export function NotificationBell() {
-  const { notifications, unreadCount, loading, markRead, markAllRead } =
+  const { notifications, unreadCount, loading, markRead, clearNotifications } =
     useNotifications();
 
   return (
@@ -89,7 +84,7 @@ export function NotificationBell() {
         <Button
           size="icon"
           variant="outline"
-          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
           className="relative border-white/20 bg-white/10 text-primary-foreground hover:bg-white/20"
         >
           <Bell className="h-5 w-5" />
@@ -107,11 +102,11 @@ export function NotificationBell() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={markAllRead}
+              onClick={clearNotifications}
               className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
             >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Mark all read
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear all
             </Button>
           )}
         </div>

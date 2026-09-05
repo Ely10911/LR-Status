@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { toast } from "sonner";
 
@@ -88,29 +88,13 @@ function useNotificationsProvider() {
     };
   }, [isAdmin, email, audienceKey]);
 
-  /** Mark a single notification as read. */
+  /** Clear (remove) a single notification — triggered when it is marked read. */
   const markRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
-    void supabase.from("notifications").update({ read: true }).eq("id", id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    void supabase.from("notifications").delete().eq("id", id);
   }, []);
 
-  /** Mark every visible notification as read. */
-  const markAllRead = useCallback(() => {
-    setNotifications((prev) => {
-      const unreadIds = prev.filter((n) => !n.read).map((n) => n.id);
-      if (unreadIds.length > 0) {
-        void supabase
-          .from("notifications")
-          .update({ read: true })
-          .in("id", unreadIds);
-      }
-      return prev.map((n) => ({ ...n, read: true }));
-    });
-  }, []);
-
-  /** Clear every visible notification for this user. */
+  /** Clear (remove) every visible notification for this user. */
   const clearNotifications = useCallback(() => {
     setNotifications((prev) => {
       const ids = prev.map((n) => n.id);
@@ -121,17 +105,13 @@ function useNotificationsProvider() {
     });
   }, []);
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications],
-  );
+  const unreadCount = notifications.length;
 
   return {
     notifications,
     unreadCount,
     loading,
     markRead,
-    markAllRead,
     clearNotifications,
   };
 }
