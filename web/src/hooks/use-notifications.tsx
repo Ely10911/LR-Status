@@ -90,20 +90,30 @@ function useNotificationsProvider() {
 
   /** Clear (remove) a single notification — triggered when it is marked read. */
   const markRead = useCallback((id: string) => {
+    // Optimistically remove locally, then persist the delete to Supabase.
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    void supabase.from("notifications").delete().eq("id", id);
+    void (async () => {
+      const { error } = await supabase.from("notifications").delete().eq("id", id);
+      if (error) {
+        console.error("Failed to delete notification", error);
+        toast.error("Could not clear the notification. Please try again.");
+      }
+    })();
   }, []);
 
   /** Clear (remove) every visible notification for this user. */
   const clearNotifications = useCallback(() => {
-    setNotifications((prev) => {
-      const ids = prev.map((n) => n.id);
-      if (ids.length > 0) {
-        void supabase.from("notifications").delete().in("id", ids);
+    const ids = notifications.map((n) => n.id);
+    setNotifications([]);
+    if (ids.length === 0) return;
+    void (async () => {
+      const { error } = await supabase.from("notifications").delete().in("id", ids);
+      if (error) {
+        console.error("Failed to clear notifications", error);
+        toast.error("Could not clear notifications. Please try again.");
       }
-      return [];
-    });
-  }, []);
+    })();
+  }, [notifications]);
 
   const unreadCount = notifications.length;
 
