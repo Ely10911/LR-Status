@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-const SITE_ID = "a38d4bc4-6b84-4ce7-9c20-d620cee64c4a";
+const SITE_ID = "b251d756-2617-44de-8652-9b372bafbe96";
 const DIST = path.resolve(process.cwd(), "dist");
 const API = "https://api.netlify.com/api/v1";
 const token = process.env.NETLIFY_AUTH_TOKEN;
