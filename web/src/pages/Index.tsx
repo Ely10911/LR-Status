@@ -17,6 +17,7 @@ import {
 import {
   Bell,
   BookOpenCheck,
+  CalendarDays,
   Download,
   FileBarChart,
   FileText,
@@ -86,6 +87,7 @@ import {
   type LRStatus,
 } from "@/lib/lr";
 import { cn } from "@/lib/utils";
+import { SUB_OFFICES } from "@/lib/schools";
 
 const ALL = "all";
 
@@ -100,6 +102,33 @@ const STATUS_CHART_COLORS: Record<LRStatus, string> = {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Preset windows for the date-submitted filter. */
+type DatePreset = typeof ALL | "today" | "7d" | "30d" | "90d" | "year" | "custom";
+
+const DATE_PRESETS: { value: DatePreset; label: string }[] = [
+  { value: ALL, label: "All Time" },
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 Days" },
+  { value: "30d", label: "Last 30 Days" },
+  { value: "90d", label: "Last 3 Months" },
+  { value: "year", label: "This Year" },
+  { value: "custom", label: "Custom Range" },
+];
+
+/** Start-of-day helper for inclusive date comparisons. */
+function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** End-of-day helper for inclusive date comparisons. */
+function endOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 const Index = () => {
   const { resources, addResource, updateStatus, toggleChecklistItem, editResource, removeResource } = useResources();
   const { user, isAdmin, logout } = useAuth();
@@ -110,6 +139,10 @@ const Index = () => {
   const [statusFilter, setStatusFilter] = useState<LRStatus | typeof ALL>(ALL);
   const [areaFilter, setAreaFilter] = useState<string>(ALL);
   const [gradeFilter, setGradeFilter] = useState<string>(ALL);
+  const [subOfficeFilter, setSubOfficeFilter] = useState<string>(ALL);
+  const [datePreset, setDatePreset] = useState<DatePreset>(ALL);
+  const [customDateFrom, setCustomDateFrom] = useState<string>("");
+  const [customDateTo, setCustomDateTo] = useState<string>("");
   const [addOpen, setAddOpen] = useState<boolean>(false);
   const [editOpen, setEditOpen] = useState<boolean>(false);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
@@ -162,6 +195,27 @@ const Index = () => {
       if (statusFilter !== ALL && resource.status !== statusFilter) return false;
       if (areaFilter !== ALL && resource.learningArea !== areaFilter) return false;
       if (gradeFilter !== ALL && resource.gradeLevel !== gradeFilter) return false;
+      if (isAdmin && subOfficeFilter !== ALL && resource.subOffice !== subOfficeFilter) {
+        return false;
+      }
+      if (datePreset !== ALL) {
+        const submitted = new Date(resource.dateSubmitted);
+        if (datePreset === "custom") {
+          // Custom range: both bounds optional, inclusive of the whole day.
+          if (customDateFrom && submitted < startOfDay(new Date(customDateFrom))) return false;
+          if (customDateTo && submitted > endOfDay(new Date(customDateTo))) return false;
+        } else if (datePreset === "today") {
+          if (submitted < startOfDay(new Date())) return false;
+        } else if (datePreset === "year") {
+          const now = new Date();
+          if (submitted < new Date(now.getFullYear(), 0, 1)) return false;
+        } else {
+          const days = datePreset === "7d" ? 7 : datePreset === "30d" ? 30 : 90;
+          const cutoff = startOfDay(new Date());
+          cutoff.setDate(cutoff.getDate() - (days - 1));
+          if (submitted < cutoff) return false;
+        }
+      }
       if (!query) return true;
       return (
         resource.title.toLowerCase().includes(query) ||
@@ -172,7 +226,37 @@ const Index = () => {
         resource.subOffice.toLowerCase().includes(query)
       );
     });
-  }, [visibleResources, search, statusFilter, areaFilter, gradeFilter]);
+  }, [
+    visibleResources,
+    search,
+    statusFilter,
+    areaFilter,
+    gradeFilter,
+    isAdmin,
+    subOfficeFilter,
+    datePreset,
+    customDateFrom,
+    customDateTo,
+  ]);
+
+  const hasActiveFilters =
+    statusFilter !== ALL ||
+    areaFilter !== ALL ||
+    gradeFilter !== ALL ||
+    (isAdmin && subOfficeFilter !== ALL) ||
+    datePreset !== ALL ||
+    Boolean(search);
+
+  const clearAllFilters = () => {
+    setStatusFilter(ALL);
+    setAreaFilter(ALL);
+    setGradeFilter(ALL);
+    setSubOfficeFilter(ALL);
+    setDatePreset(ALL);
+    setCustomDateFrom("");
+    setCustomDateTo("");
+    setSearch("");
+  };
 
   const selected: LearningResource | null =
     resources.find((resource) => resource.id === selectedId) ?? null;
@@ -925,17 +1009,55 @@ const Index = () => {
               ))}
             </SelectContent>
           </Select>
-          {(statusFilter !== ALL || areaFilter !== ALL || gradeFilter !== ALL || search) && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setStatusFilter(ALL);
-                setAreaFilter(ALL);
-                setGradeFilter(ALL);
-                setSearch("");
-              }}
-              className="text-muted-foreground"
-            >
+          {isAdmin && (
+            <Select value={subOfficeFilter} onValueChange={setSubOfficeFilter}>
+              <SelectTrigger className="bg-card sm:w-52">
+                <SelectValue placeholder="Sub-office" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Sub-Offices</SelectItem>
+                {SUB_OFFICES.map((office) => (
+                  <SelectItem key={office} value={office}>
+                    {office}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={datePreset} onValueChange={(v) => setDatePreset(v as DatePreset)}>
+            <SelectTrigger className="bg-card sm:w-40">
+              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder="Date submitted" />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_PRESETS.map((preset) => (
+                <SelectItem key={preset.value} value={preset.value}>
+                  {preset.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {datePreset === "custom" && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+                className="bg-card sm:w-36"
+                aria-label="Submitted from date"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+                className="bg-card sm:w-36"
+                aria-label="Submitted to date"
+              />
+            </div>
+          )}
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={clearAllFilters} className="text-muted-foreground">
               Clear filters
             </Button>
           )}
