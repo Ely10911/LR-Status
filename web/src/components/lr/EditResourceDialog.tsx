@@ -117,9 +117,14 @@ export function EditResourceDialog({
         subOffice: resource.subOffice,
       });
       setAdditionalAuthors(resource.additionalAuthors ?? []);
-      setResubmitted(false);
     }
   }, [resource, open, form]);
+
+  // Reset the upload-guidance step when the dialog opens. Keyed on `open` only —
+  // resubmitting updates the resource object, which must not wipe the flag.
+  useEffect(() => {
+    if (open) setResubmitted(false);
+  }, [open]);
 
   if (!resource) return null;
 
