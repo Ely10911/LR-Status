@@ -40,6 +40,7 @@ import {
   TERMS,
   RESOURCE_TYPES,
   WEEKS,
+  UPLOAD_FORM_URL,
   type AdditionalAuthor,
   type ResourceType,
 } from "@/lib/lr";
@@ -47,9 +48,6 @@ import {
   SCHOOLS_BY_SUB_OFFICE,
   SUB_OFFICES,
 } from "@/lib/schools";
-
-/** Upload form link for actual learning resource files. */
-const UPLOAD_FORM_URL = "https://forms.cloud.microsoft/r/F4JCmdAfNx";
 
 /** All learning resources are submitted by SDO Batangas. */
 const SDO_BATANGAS = "SDO Batangas";

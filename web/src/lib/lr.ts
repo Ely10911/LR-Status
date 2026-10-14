@@ -267,6 +267,9 @@ export const GRADE_LEVELS = [
   "MADRASAH",
 ];
 
+/** Upload form link for actual learning resource files (Microsoft Forms). */
+export const UPLOAD_FORM_URL = "https://forms.cloud.microsoft/r/F4JCmdAfNx";
+
 export const TERMS = [
   "Term 1",
   "Term 2",

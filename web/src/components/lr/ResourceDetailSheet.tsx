@@ -75,6 +75,9 @@ export function ResourceDetailSheet({
   const totalItems = resource.checklistItems.length;
   const allChecked = isChecklistComplete(resource.checklistItems);
   const checklistProgress = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+  // Each resubmission adds a "Resubmitted…" history entry; N entries = revision N+1.
+  const revisionCount =
+    resource.history.filter((entry) => entry.remarks?.startsWith("Resubmitted")).length;
 
   const handleUpdate = () => {
     if (!nextStatus) return;
@@ -111,6 +114,11 @@ export function ResourceDetailSheet({
                 {resource.code}
               </span>
               <StatusBadge status={resource.status} />
+              {revisionCount > 0 && (
+                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                  Revision {revisionCount + 1}
+                </span>
+              )}
             </div>
             {canUpdate && (
               <Button

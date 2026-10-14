@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { UploadCloud } from "lucide-react";
 
 import { AdditionalAuthorsSection } from "@/components/lr/AdditionalAuthorsSection";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import {
   TERMS,
   RESOURCE_TYPES,
   WEEKS,
+  UPLOAD_FORM_URL,
   type AdditionalAuthor,
   type LearningResource,
   type ResourceType,
@@ -80,6 +82,8 @@ export function EditResourceDialog({
   resubmitMode = false,
 }: EditResourceDialogProps) {
   const [additionalAuthors, setAdditionalAuthors] = useState<AdditionalAuthor[]>([]);
+  // After resubmitting, stay open to guide the viewer to the upload form.
+  const [resubmitted, setResubmitted] = useState<boolean>(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -113,6 +117,7 @@ export function EditResourceDialog({
         subOffice: resource.subOffice,
       });
       setAdditionalAuthors(resource.additionalAuthors ?? []);
+      setResubmitted(false);
     }
   }, [resource, open, form]);
 
@@ -138,12 +143,46 @@ export function EditResourceDialog({
         ? "Your LR is back in the queue for quality assurance."
         : values.title,
     });
+    if (resubmitMode) {
+      // Keep the dialog open so the viewer can upload the revised files.
+      setResubmitted(true);
+      return;
+    }
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      {resubmitMode && resubmitted ? (
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+              <UploadCloud className="h-7 w-7 text-emerald-600" />
+            </div>
+            <DialogTitle className="font-display text-center text-xl">
+              Now upload your revised resource files
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Your resubmission is in the queue for quality assurance. To complete it, upload your
+              revised resource files using the official Upload Form — your new upload will
+              <span className="font-semibold text-foreground"> overwrite the previous submission</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:justify-center">
+            <Button
+              className="w-full gap-2 bg-primary hover:bg-primary/90 sm:w-auto"
+              onClick={() => window.open(UPLOAD_FORM_URL, "_blank", "noopener,noreferrer")}
+            >
+              <UploadCloud className="h-4 w-4" />
+              Open Upload Form
+            </Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      ) : (
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {resubmitMode ? "Edit & Resubmit Learning Resource" : "Edit Learning Resource"}
@@ -435,7 +474,8 @@ export function EditResourceDialog({
             </DialogFooter>
           </form>
         </Form>
-      </DialogContent>
+        </DialogContent>
+      )}
     </Dialog>
   );
 }
