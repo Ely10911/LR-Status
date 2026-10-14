@@ -35,7 +35,7 @@ import {
   GRADE_LEVELS,
   LEARNING_AREAS,
   POSITIONS,
-  QUARTERS,
+  TERMS,
   RESOURCE_TYPES,
   WEEKS,
   type AdditionalAuthor,
@@ -53,7 +53,7 @@ const formSchema = z.object({
   resourceType: z.string().min(1, "Select a resource type."),
   learningArea: z.string().min(1, "Select a learning area."),
   gradeLevel: z.string().min(1, "Select a grade level."),
-  quarter: z.string().min(1, "Select a quarter."),
+  quarter: z.string().min(1, "Select a term."),
   week: z.string().min(1, "Select a week."),
   developer: z.string().trim().min(2, "Enter the developer's name."),
   position: z.string().min(1, "Select a position."),
@@ -68,6 +68,8 @@ interface EditResourceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (id: string, input: EditResourceInput) => void;
+  /** When true, a viewer is editing a disapproved LR to resubmit it. */
+  resubmitMode?: boolean;
 }
 
 export function EditResourceDialog({
@@ -75,6 +77,7 @@ export function EditResourceDialog({
   open,
   onOpenChange,
   onEdit,
+  resubmitMode = false,
 }: EditResourceDialogProps) {
   const [additionalAuthors, setAdditionalAuthors] = useState<AdditionalAuthor[]>([]);
   const form = useForm<FormValues>({
@@ -130,8 +133,10 @@ export function EditResourceDialog({
       school: values.school,
       subOffice: values.subOffice,
     });
-    toast.success("Resource details updated", {
-      description: values.title,
+    toast.success(resubmitMode ? "Resource resubmitted" : "Resource details updated", {
+      description: resubmitMode
+        ? "Your LR is back in the queue for quality assurance."
+        : values.title,
     });
     onOpenChange(false);
   };
@@ -140,27 +145,34 @@ export function EditResourceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Edit Learning Resource</DialogTitle>
+          <DialogTitle className="font-display text-xl">
+            {resubmitMode ? "Edit & Resubmit Learning Resource" : "Edit Learning Resource"}
+          </DialogTitle>
           <DialogDescription>
-            Update the details of this learning resource. The status history is preserved.
+            {resubmitMode
+              ? "Update the details of your disapproved resource, then resubmit it for quality assurance."
+              : "Update the details of this learning resource. The status history is preserved."}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>LR Code</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. LR-2026-0001" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* LR Code is admin-assigned; hidden when a viewer resubmits. */}
+            {!resubmitMode && (
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>LR Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. LR-2026-0001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -257,17 +269,17 @@ export function EditResourceDialog({
                 name="quarter"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quarter</FormLabel>
+                    <FormLabel>Term</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select quarter" />
+                          <SelectValue placeholder="Select term" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {QUARTERS.map((quarter) => (
-                          <SelectItem key={quarter} value={quarter}>
-                            {quarter}
+                        {TERMS.map((term) => (
+                          <SelectItem key={term} value={term}>
+                            {term}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -418,7 +430,7 @@ export function EditResourceDialog({
                 Cancel
               </Button>
               <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Save Changes
+                {resubmitMode ? "Resubmit" : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>

@@ -23,6 +23,7 @@ import {
   FileText,
   LogOut,
   Mail,
+  Pencil,
   Plus,
   Search,
   ShieldCheck,
@@ -75,6 +76,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useCertificates } from "@/hooks/use-certificates";
+import type { EditResourceInput } from "@/hooks/use-resources";
 import { useResources } from "@/hooks/use-resources";
 import { useVisitors } from "@/hooks/use-visitors";
 import {
@@ -130,7 +132,7 @@ function endOfDay(date: Date): Date {
 }
 
 const Index = () => {
-  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, removeResource } = useResources();
+  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, removeResource } = useResources();
   const { user, isAdmin, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
   const { requests, addRequest, updateRequestStatus, removeRequest, pendingCount } = useCertificates();
@@ -146,6 +148,8 @@ const Index = () => {
   const [addOpen, setAddOpen] = useState<boolean>(false);
   const [editOpen, setEditOpen] = useState<boolean>(false);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  // True when the edit dialog was opened by a viewer to resubmit a disapproved LR.
+  const [isResubmit, setIsResubmit] = useState<boolean>(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
 
@@ -356,8 +360,21 @@ const Index = () => {
   };
 
   const handleEditFromSheet = (id: string) => {
+    setIsResubmit(false);
     setEditTargetId(id);
     setEditOpen(true);
+  };
+
+  /** Viewer opens the resubmit flow for their own disapproved LR. */
+  const handleResubmit = (resource: LearningResource) => {
+    setIsResubmit(true);
+    setEditTargetId(resource.id);
+    setEditOpen(true);
+  };
+
+  const handleEditSubmit = (id: string, input: EditResourceInput) => {
+    if (isResubmit) resubmitResource(id, input);
+    else editResource(id, input);
   };
 
   const handleDelete = (resource: LearningResource) => {
@@ -433,7 +450,7 @@ const Index = () => {
       "Type",
       "Learning Area",
       "Grade Level",
-      "Quarter",
+      "Term",
       "Week",
       "Developer",
       "Position",
@@ -1143,6 +1160,23 @@ const Index = () => {
                           </TooltipTrigger>
                           <TooltipContent>Remove from tracker</TooltipContent>
                         </Tooltip>
+                      ) : resource.status === "disapproved" ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResubmit(resource);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit & Resubmit</TooltipContent>
+                        </Tooltip>
                       ) : null}
                     </TableCell>
                   </TableRow>
@@ -1317,12 +1351,16 @@ const Index = () => {
       {isAdmin && (
         <AddResourceDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={addResource} />
       )}
-      {isAdmin && editTarget && (
+      {editTarget && (isAdmin || isResubmit) && (
         <EditResourceDialog
           resource={editTarget}
           open={editOpen}
-          onOpenChange={setEditOpen}
-          onEdit={editResource}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) setIsResubmit(false);
+          }}
+          onEdit={handleEditSubmit}
+          resubmitMode={isResubmit}
         />
       )}
       <ResourceDetailSheet

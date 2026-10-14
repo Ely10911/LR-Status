@@ -466,6 +466,85 @@ export function useResources() {
     })();
   }, []);
 
+  /**
+   * Viewer resubmission of a disapproved resource: applies the edited
+   * details, moves the LR back to "submitted", and notifies the admin.
+   */
+  const resubmitResource = useCallback((id: string, input: EditResourceInput) => {
+    const now = new Date().toISOString();
+    const remarks = "Resubmitted for quality assurance after revision.";
+    setResources((prev) =>
+      prev.map((resource) =>
+        resource.id === id
+          ? {
+              ...resource,
+              title: input.title,
+              resourceType: input.resourceType,
+              learningArea: input.learningArea,
+              gradeLevel: input.gradeLevel,
+              quarter: input.quarter,
+              week: input.week,
+              developer: input.developer,
+              position: input.position,
+              additionalAuthors: input.additionalAuthors ?? resource.additionalAuthors,
+              school: input.school,
+              subOffice: input.subOffice,
+              status: "submitted" as const,
+              // Resubmission starts a fresh QA checklist round.
+              checklistItems: createEmptyChecklist(),
+              history: [
+                ...resource.history,
+                { status: "submitted" as const, date: now, remarks },
+              ],
+            }
+          : resource,
+      ),
+    );
+
+    // Sync to Supabase
+    (async () => {
+      await supabase
+        .from("learning_resources")
+        .update({
+          title: input.title,
+          resource_type: input.resourceType,
+          learning_area: input.learningArea,
+          grade_level: input.gradeLevel,
+          quarter: input.quarter,
+          week: input.week,
+          developer: input.developer,
+          position: input.position,
+          additional_authors: input.additionalAuthors ?? [],
+          school: input.school,
+          sub_office: input.subOffice,
+          status: "submitted",
+          checking_items: createEmptyChecklist(),
+          updated_at: now,
+        })
+        .eq("id", id);
+      await supabase.from("resource_history").insert({
+        resource_id: id,
+        status: "submitted",
+        date: now,
+        remarks,
+      });
+
+      // Notify the admin of the resubmission.
+      const target = resourcesRef.current.find((r) => r.id === id);
+      if (target) {
+        await pushNotification({
+          audience: "admin",
+          type: "new-submission",
+          title: target.title,
+          message: `Learning resource "${target.title}" (${target.code}) was resubmitted by ${input.developer} (${input.school}) after revision.`,
+          resourceId: id,
+          resourceCode: target.code,
+          resourceStatus: "submitted",
+        });
+      }
+    })();
+  }, []);
+
   const removeResource = useCallback((id: string) => {
     setResources((prev) => prev.filter((resource) => resource.id !== id));
 
@@ -481,6 +560,7 @@ export function useResources() {
     updateStatus,
     toggleChecklistItem,
     editResource,
+    resubmitResource,
     removeResource,
     loading,
   };

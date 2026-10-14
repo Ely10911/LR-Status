@@ -35,7 +35,7 @@ import {
   GRADE_LEVELS,
   LEARNING_AREAS,
   POSITIONS,
-  QUARTERS,
+  TERMS,
   RESOURCE_TYPES,
   WEEKS,
   type AdditionalAuthor,
@@ -54,7 +54,7 @@ const formSchema = z.object({
   resourceType: z.string().min(1, "Select a resource type."),
   learningArea: z.string().min(1, "Select a learning area."),
   gradeLevel: z.string().min(1, "Select a grade level."),
-  quarter: z.string().min(1, "Select a quarter."),
+  quarter: z.string().min(1, "Select a term."),
   week: z.string().min(1, "Select a week."),
   developer: z.string().trim().min(2, "Enter the developer's name."),
   position: z.string().min(1, "Select a position."),
@@ -219,17 +219,17 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceD
                 name="quarter"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quarter</FormLabel>
+                    <FormLabel>Term</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select quarter" />
+                          <SelectValue placeholder="Select term" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {QUARTERS.map((quarter) => (
-                          <SelectItem key={quarter} value={quarter}>
-                            {quarter}
+                        {TERMS.map((term) => (
+                          <SelectItem key={term} value={term}>
+                            {term}
                           </SelectItem>
                         ))}
                       </SelectContent>

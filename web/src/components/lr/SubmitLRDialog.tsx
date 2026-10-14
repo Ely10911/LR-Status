@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ExternalLink, UploadCloud } from "lucide-react";
@@ -30,15 +30,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AdditionalAuthorsSection } from "@/components/lr/AdditionalAuthorsSection";
 import { useAuth } from "@/hooks/use-auth";
 import type { NewResourceInput } from "@/hooks/use-resources";
 import {
   GRADE_LEVELS,
   LEARNING_AREAS,
   POSITIONS,
-  QUARTERS,
+  TERMS,
   RESOURCE_TYPES,
   WEEKS,
+  type AdditionalAuthor,
   type ResourceType,
 } from "@/lib/lr";
 import {
@@ -57,7 +59,7 @@ const formSchema = z.object({
   resourceType: z.string().min(1, "Select a resource type."),
   learningArea: z.string().min(1, "Select a learning area."),
   gradeLevel: z.string().min(1, "Select a grade level."),
-  quarter: z.string().min(1, "Select a quarter."),
+  quarter: z.string().min(1, "Select a term."),
   week: z.string().min(1, "Select a week."),
   developer: z.string().trim().min(2, "Enter the developer's name."),
   position: z.string().min(1, "Select a position."),
@@ -80,6 +82,8 @@ interface SubmitLRDialogProps {
  */
 export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogProps) {
   const { user } = useAuth();
+  // Co-writers credited on this resource (used when there is more than one writer).
+  const [coWriters, setCoWriters] = useState<AdditionalAuthor[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -120,7 +124,7 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
       week: values.week,
       developer: values.developer,
       position: values.position,
-      additionalAuthors: [],
+      additionalAuthors: coWriters.filter((a) => a.name.trim().length > 0),
       submittedByEmail: user?.email,
       division: SDO_BATANGAS,
       school: values.school,
@@ -130,6 +134,7 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
       description: "Please upload your resource files using the form link provided.",
     });
     form.reset();
+    setCoWriters([]);
     onOpenChange(false);
   };
 
@@ -269,17 +274,17 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
                 name="quarter"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quarter</FormLabel>
+                    <FormLabel>Term</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select quarter" />
+                          <SelectValue placeholder="Select term" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {QUARTERS.map((quarter) => (
-                          <SelectItem key={quarter} value={quarter}>
-                            {quarter}
+                        {TERMS.map((term) => (
+                          <SelectItem key={term} value={term}>
+                            {term}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -353,6 +358,9 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
                 </FormItem>
               )}
             />
+
+            {/* Co-writers: only relevant when there is more than one writer. */}
+            <AdditionalAuthorsSection authors={coWriters} onChange={setCoWriters} />
 
             <FormField
               control={form.control}
