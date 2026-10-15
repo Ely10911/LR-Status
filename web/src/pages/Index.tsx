@@ -81,6 +81,7 @@ import { useResources } from "@/hooks/use-resources";
 import { useVisitors } from "@/hooks/use-visitors";
 import {
   formatDate,
+  formatDateTime,
   GRADE_LEVELS,
   LEARNING_AREAS,
   STATUS_CONFIG,
@@ -135,6 +136,22 @@ const Index = () => {
   const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, removeResource } = useResources();
   const { user, isAdmin, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
+
+  // Visit count per user, keyed by lowercased email.
+  const visitsByEmail = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const v of visitors) {
+      const key = v.email.trim().toLowerCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [visitors]);
+
+  const uniqueVisitorCount = useMemo(() => {
+    const seen = new Set<string>();
+    for (const v of visitors) seen.add(v.email.trim().toLowerCase());
+    return seen.size;
+  }, [visitors]);
   const { requests, addRequest, updateRequestStatus, removeRequest, pendingCount } = useCertificates();
 
   const [search, setSearch] = useState<string>("");
@@ -422,7 +439,7 @@ const Index = () => {
     const rows = visitors.map((v) => [
       `"${v.name}"`,
       v.email,
-      formatDate(v.visitedAt),
+      formatDateTime(v.visitedAt),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -542,6 +559,25 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {isAdmin && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      aria-label="Open visitor log"
+                      onClick={() => {
+                        const el = document.getElementById("visitor-log-section");
+                        el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="border-white/20 bg-white/10 text-primary-foreground hover:bg-white/20"
+                    >
+                      <Users className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Visitor Log</TooltipContent>
+                </Tooltip>
+              )}
               <NotificationBell />
               {/* User badge */}
               <div className="hidden flex-col items-end sm:flex">
@@ -1213,7 +1249,7 @@ const Index = () => {
 
       {/* Visitor Log Section (Admin only) */}
         {isAdmin && (
-          <section className="mt-8 rounded-xl border bg-card shadow-sm">
+          <section id="visitor-log-section" className="mt-8 scroll-mt-6 rounded-xl border bg-card shadow-sm">
             <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
@@ -1246,10 +1282,14 @@ const Index = () => {
             </div>
 
             {/* Visitor stats */}
-            <div className="grid grid-cols-2 gap-3 border-b p-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 border-b p-4 sm:grid-cols-4">
               <div className="rounded-lg border bg-muted/30 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Visitors</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Visits</p>
                 <p className="font-display mt-1 text-2xl font-bold tabular-nums">{visitors.length}</p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Unique Users</p>
+                <p className="font-display mt-1 text-2xl font-bold tabular-nums text-sky-600">{uniqueVisitorCount}</p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Today</p>
@@ -1260,7 +1300,7 @@ const Index = () => {
                   }).length}
                 </p>
               </div>
-              <div className="col-span-2 rounded-lg border bg-muted/30 p-3 sm:col-span-1">
+              <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">This Month</p>
                 <p className="font-display mt-1 text-2xl font-bold tabular-nums text-emerald-600">
                   {visitors.filter((v) => {
@@ -1292,7 +1332,8 @@ const Index = () => {
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
                     <TableHead className="min-w-[160px]">Name</TableHead>
                     <TableHead className="min-w-[220px]">Email</TableHead>
-                    <TableHead className="min-w-[160px]">Date Visited</TableHead>
+                    <TableHead className="min-w-[160px]">Date & Time of Visit</TableHead>
+                    <TableHead className="w-24 text-center">Visits</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -1318,7 +1359,12 @@ const Index = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(v.visitedAt)}
+                          {formatDateTime(v.visitedAt)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary">
+                            {visitsByEmail.get(v.email.trim().toLowerCase()) ?? 1}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Tooltip>

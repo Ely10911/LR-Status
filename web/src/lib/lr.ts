@@ -314,6 +314,17 @@ export function formatDate(iso: string): string {
   });
 }
 
+/** Formats an ISO timestamp with both date and time (e.g. "Sep 10, 2026, 2:45 PM"). */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function daysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
