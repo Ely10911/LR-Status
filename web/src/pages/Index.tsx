@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -18,6 +18,8 @@ import {
   Bell,
   BookOpenCheck,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   Download,
   FileBarChart,
   FileText,
@@ -137,21 +139,45 @@ const Index = () => {
   const { user, isAdmin, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
 
-  // Visit count per user, keyed by lowercased email.
-  const visitsByEmail = useMemo(() => {
-    const counts = new Map<string, number>();
+  // Group visit entries into unique users and sort by visit count (most frequent first).
+  const groupedVisitors = useMemo(() => {
+    type VisitorGroup = {
+      emailKey: string;
+      name: string;
+      email: string;
+      visits: typeof visitors;
+      lastSeen: string;
+    };
+    const groups = new Map<string, VisitorGroup>();
     for (const v of visitors) {
-      const key = v.email.trim().toLowerCase();
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      const emailKey = v.email.trim().toLowerCase();
+      const group = groups.get(emailKey);
+      if (group) {
+        group.visits.push(v);
+        // Keep the display name from the most recent visit.
+        if (new Date(v.visitedAt).getTime() >= new Date(group.lastSeen).getTime()) {
+          group.lastSeen = v.visitedAt;
+          group.name = v.name;
+        }
+      } else {
+        groups.set(emailKey, {
+          emailKey,
+          name: v.name,
+          email: v.email,
+          visits: [v],
+          lastSeen: v.visitedAt,
+        });
+      }
     }
-    return counts;
+    return Array.from(groups.values())
+      .map((g) => ({ ...g, count: g.visits.length, lastVisit: g.lastSeen }))
+      .sort(
+        (a, b) =>
+          b.count - a.count || new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime(),
+      );
   }, [visitors]);
 
-  const uniqueVisitorCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const v of visitors) seen.add(v.email.trim().toLowerCase());
-    return seen.size;
-  }, [visitors]);
+  const uniqueVisitorCount = groupedVisitors.length;
   const { requests, addRequest, updateRequestStatus, removeRequest, pendingCount } = useCertificates();
 
   const [search, setSearch] = useState<string>("");
@@ -182,6 +208,7 @@ const Index = () => {
   const [visitorEmail, setVisitorEmail] = useState<string>("");
   const [visitorError, setVisitorError] = useState<string>("");
   const [visitorSearch, setVisitorSearch] = useState<string>("");
+  const [expandedVisitor, setExpandedVisitor] = useState<string | null>(null);
 
   // Viewers only see the learning resources they submitted themselves.
   const visibleResources = useMemo(() => {
@@ -454,11 +481,11 @@ const Index = () => {
 
   const filteredVisitors = useMemo(() => {
     const query = visitorSearch.trim().toLowerCase();
-    if (!query) return visitors;
-    return visitors.filter(
+    if (!query) return groupedVisitors;
+    return groupedVisitors.filter(
       (v) => v.name.toLowerCase().includes(query) || v.email.toLowerCase().includes(query),
     );
-  }, [visitors, visitorSearch]);
+  }, [groupedVisitors, visitorSearch]);
 
   const handleExportReport = () => {
     const headers = [
@@ -1332,9 +1359,9 @@ const Index = () => {
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
                     <TableHead className="min-w-[160px]">Name</TableHead>
                     <TableHead className="min-w-[220px]">Email</TableHead>
-                    <TableHead className="min-w-[160px]">Date & Time of Visit</TableHead>
+                    <TableHead className="min-w-[160px]">Last Visit</TableHead>
                     <TableHead className="w-24 text-center">Visits</TableHead>
-                    <TableHead className="w-10" />
+                    <TableHead className="w-20" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1349,43 +1376,87 @@ const Index = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredVisitors.map((v) => (
-                      <TableRow key={v.id}>
-                        <TableCell className="font-semibold">{v.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 shrink-0" />
-                            {v.email}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDateTime(v.visitedAt)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary">
-                            {visitsByEmail.get(v.email.trim().toLowerCase()) ?? 1}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => {
-                                  removeVisitor(v.id);
-                                  toast.success("Visitor entry removed");
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Remove visitor entry</TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    filteredVisitors.map((g) => {
+                      const isExpanded = expandedVisitor === g.emailKey;
+                      const sortedVisits = [...g.visits].sort(
+                        (a, b) => new Date(b.visitedAt).getTime() - new Date(a.visitedAt).getTime(),
+                      );
+                      return (
+                        <Fragment key={g.emailKey}>
+                        <TableRow
+                          className="cursor-pointer"
+                          onClick={() => setExpandedVisitor(isExpanded ? null : g.emailKey)}
+                        >
+                          <TableCell className="font-semibold">
+                            <span className="flex items-center gap-1.5">
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              )}
+                              {g.name}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <Mail className="h-3.5 w-3.5 shrink-0" />
+                              {g.email}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {formatDateTime(g.lastVisit)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary">
+                              {g.count}
+                            </span>
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => {
+                                    for (const visit of g.visits) removeVisitor(visit.id);
+                                    toast.success(
+                                      `Removed ${g.count} visit ${g.count === 1 ? "entry" : "entries"} for ${g.name}`,
+                                    );
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Remove all visits for this user</TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={5}>
+                              <div className="pl-6">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Visit history — {g.count} {g.count === 1 ? "visit" : "visits"}
+                                </p>
+                                <ul className="space-y-1.5">
+                                  {sortedVisits.map((visit) => (
+                                    <li
+                                      key={visit.id}
+                                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                                    >
+                                      <CalendarDays className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                      {formatDateTime(visit.visitedAt)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
