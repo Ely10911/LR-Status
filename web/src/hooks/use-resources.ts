@@ -545,6 +545,54 @@ export function useResources() {
     })();
   }, []);
 
+  /**
+   * Writer-side remark on their submitted LR: appends a history entry without
+   * changing the LR status (used to flag updates, e.g. uploaded required
+   * documents), and notifies the admin.
+   */
+  const addWriterRemark = useCallback((id: string, remark: string, writerName: string) => {
+    const text = remark.trim();
+    if (!text) return;
+    const now = new Date().toISOString();
+    const remarks = `Writer remark: ${text}`;
+    const target = resourcesRef.current.find((r) => r.id === id);
+
+    setResources((prev) =>
+      prev.map((resource) =>
+        resource.id === id
+          ? {
+              ...resource,
+              history: [
+                ...resource.history,
+                { status: resource.status, date: now, remarks },
+              ],
+            }
+          : resource,
+      ),
+    );
+
+    // Sync to Supabase and notify the admin.
+    (async () => {
+      await supabase.from("resource_history").insert({
+        resource_id: id,
+        status: target?.status ?? "submitted",
+        date: now,
+        remarks,
+      });
+      if (target) {
+        await pushNotification({
+          audience: "admin",
+          type: "writer-remark",
+          title: target.title,
+          message: `${writerName} posted an update on "${target.title}" (${target.code}): ${text}`,
+          resourceId: id,
+          resourceCode: target.code,
+          resourceStatus: target.status,
+        });
+      }
+    })();
+  }, []);
+
   const removeResource = useCallback((id: string) => {
     setResources((prev) => prev.filter((resource) => resource.id !== id));
 
@@ -561,6 +609,7 @@ export function useResources() {
     toggleChecklistItem,
     editResource,
     resubmitResource,
+    addWriterRemark,
     removeResource,
     loading,
   };

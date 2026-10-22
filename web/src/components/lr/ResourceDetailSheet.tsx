@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   GraduationCap,
   ListChecks,
+  MessageSquarePlus,
   Pencil,
   School,
   User2,
@@ -48,6 +49,8 @@ interface ResourceDetailSheetProps {
   onToggleChecklistItem: (id: string, itemKey: ChecklistItemKey) => void;
   onEdit: (id: string) => void;
   canUpdate: boolean;
+  /** Present for writers: posts an update remark on their submitted LR. */
+  onAddWriterRemark?: (id: string, remark: string) => void;
 }
 
 export function ResourceDetailSheet({
@@ -58,13 +61,16 @@ export function ResourceDetailSheet({
   onToggleChecklistItem,
   onEdit,
   canUpdate,
+  onAddWriterRemark,
 }: ResourceDetailSheetProps) {
   const [nextStatus, setNextStatus] = useState<LRStatus | null>(null);
   const [remarks, setRemarks] = useState<string>("");
+  const [writerRemark, setWriterRemark] = useState<string>("");
 
   useEffect(() => {
     setNextStatus(null);
     setRemarks("");
+    setWriterRemark("");
   }, [resource?.id, resource?.status]);
 
   if (!resource) return null;
@@ -102,6 +108,16 @@ export function ResourceDetailSheet({
   const handleToggleItem = (itemKey: ChecklistItemKey) => {
     if (!canUpdate) return;
     onToggleChecklistItem(resource.id, itemKey);
+  };
+
+  const handleAddWriterRemark = () => {
+    const text = writerRemark.trim();
+    if (!text || !onAddWriterRemark) return;
+    onAddWriterRemark(resource.id, text);
+    toast.success("Update posted", {
+      description: "The QA admin has been notified of your remark.",
+    });
+    setWriterRemark("");
   };
 
   return (
@@ -347,7 +363,14 @@ export function ResourceDetailSheet({
                       <p className="text-sm font-semibold">{config.label}</p>
                       <p className="text-xs text-muted-foreground">{formatDate(event.date)}</p>
                     </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{event.remarks}</p>
+                    {event.remarks.startsWith("Writer remark:") ? (
+                      <p className="mt-0.5 flex items-start gap-1.5 text-sm font-medium text-sky-700">
+                        <MessageSquarePlus className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        {event.remarks}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-sm text-muted-foreground">{event.remarks}</p>
+                    )}
                     {eventChecked !== null && event.status === "for-checking" && (
                       <p className="mt-0.5 text-xs font-medium text-indigo-600">
                         Checklist: {eventChecked} / {event.checklistItems?.length ?? totalItems} items checked
@@ -359,6 +382,36 @@ export function ResourceDetailSheet({
             })}
           </ol>
         </div>
+
+        {/* Writer remarks — writers flag updates (e.g. uploaded documents) without changing status */}
+        {!canUpdate && onAddWriterRemark && (
+          <>
+            <Separator className="my-5" />
+            <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50 p-4">
+              <h3 className="font-display text-base font-semibold">Writer Remarks</h3>
+              <p className="text-xs text-sky-800">
+                Post an update for the QA admin — for example, to indicate that
+                you have uploaded the required documents.
+              </p>
+              <Textarea
+                id="writer-remark"
+                value={writerRemark}
+                onChange={(e) => setWriterRemark(e.target.value)}
+                placeholder="e.g. Uploaded the required documents for this learning resource."
+                rows={3}
+                className="bg-background"
+              />
+              <Button
+                onClick={handleAddWriterRemark}
+                disabled={!writerRemark.trim()}
+                className="w-full gap-2"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                Post Remark
+              </Button>
+            </div>
+          </>
+        )}
 
         {canUpdate && transitions.length > 0 && (
           <>

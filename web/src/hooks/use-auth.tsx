@@ -3,7 +3,10 @@ import createContextHook from "@nkzw/create-context-hook";
 
 import { supabase } from "@/lib/supabase";
 
-export type UserRole = "admin" | "viewer";
+export type UserRole = "admin" | "viewer" | "sub-office";
+
+/** Registration account type for the public portal. */
+export type ViewerAccountType = "writer" | "sub-office";
 
 export interface AuthUser {
   name: string;
@@ -32,13 +35,16 @@ interface ViewerAccountRow {
   email: string;
   school: string;
   sub_office: string;
+  role: string | null;
 }
 
 export interface RegisterViewerInput {
   name: string;
   email: string;
-  school: string;
+  /** Only required for writer accounts; sub-office monitors register without a school. */
+  school?: string;
   subOffice: string;
+  accountType: ViewerAccountType;
 }
 
 export interface AuthResult {
@@ -136,7 +142,7 @@ function useAuthProvider() {
       setUser({
         name: account.full_name,
         email: account.email,
-        role: "viewer",
+        role: account.role === "sub_office" ? "sub-office" : "viewer",
         school: account.school,
         subOffice: account.sub_office,
       });
@@ -160,7 +166,7 @@ function useAuthProvider() {
       if (!input.subOffice) {
         return { ok: false, error: "Please select your sub-office." };
       }
-      if (!input.school) {
+      if (input.accountType === "writer" && !input.school) {
         return { ok: false, error: "Please select your school." };
       }
       if (!email || !EMAIL_REGEX.test(email)) {
@@ -179,8 +185,9 @@ function useAuthProvider() {
       const { error } = await supabase.from("viewer_accounts").insert({
         full_name: name,
         email,
-        school: input.school,
+        school: input.school ?? "",
         sub_office: input.subOffice,
+        role: input.accountType === "sub-office" ? "sub_office" : "viewer",
       });
       if (error) {
         console.error("Failed to register viewer account", error);
@@ -196,8 +203,8 @@ function useAuthProvider() {
       setUser({
         name,
         email,
-        role: "viewer",
-        school: input.school,
+        role: input.accountType === "sub-office" ? "sub-office" : "viewer",
+        school: input.school ?? "",
         subOffice: input.subOffice,
       });
       return { ok: true };
@@ -210,8 +217,9 @@ function useAuthProvider() {
   }, []);
 
   const isAdmin = user?.role === "admin";
+  const isSubOffice = user?.role === "sub-office";
 
-  return { user, isAdmin, loginAdmin, loginViewer, registerViewer, logout };
+  return { user, isAdmin, isSubOffice, loginAdmin, loginViewer, registerViewer, logout };
 }
 
 export const [AuthProvider, useAuth] = createContextHook(useAuthProvider);

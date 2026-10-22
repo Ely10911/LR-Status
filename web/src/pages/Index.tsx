@@ -17,6 +17,7 @@ import {
 import {
   Bell,
   BookOpenCheck,
+  Building2,
   CalendarDays,
   ChevronDown,
   ChevronUp,
@@ -135,8 +136,8 @@ function endOfDay(date: Date): Date {
 }
 
 const Index = () => {
-  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, removeResource } = useResources();
-  const { user, isAdmin, logout } = useAuth();
+  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, addWriterRemark, removeResource } = useResources();
+  const { user, isAdmin, isSubOffice, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
 
   // Group visit entries into unique users and sort by visit count (most frequent first).
@@ -211,14 +212,20 @@ const Index = () => {
   const [expandedVisitor, setExpandedVisitor] = useState<string | null>(null);
 
   // Viewers only see the learning resources they submitted themselves.
+  // Sub-office monitors see every submission from their own sub-office.
   const visibleResources = useMemo(() => {
     if (isAdmin) return resources;
+    if (isSubOffice) {
+      const office = user?.subOffice?.trim();
+      if (!office) return [];
+      return resources.filter((r) => r.subOffice === office);
+    }
     const email = user?.email?.trim().toLowerCase();
     if (!email) return [];
     return resources.filter(
       (r) => (r.submittedByEmail ?? "").trim().toLowerCase() === email,
     );
-  }, [resources, isAdmin, user]);
+  }, [resources, isAdmin, isSubOffice, user]);
 
   const counts = useMemo(() => {
     const map: Record<LRStatus, number> = {
@@ -616,6 +623,10 @@ const Index = () => {
                     <>
                       <ShieldCheck className="h-3 w-3 text-accent" /> Admin
                     </>
+                  ) : isSubOffice ? (
+                    <>
+                      <Building2 className="h-3 w-3 text-accent" /> Sub-Office
+                    </>
                   ) : (
                     "Viewer"
                   )}
@@ -651,7 +662,7 @@ const Index = () => {
                     Log Resource
                   </Button>
                 </div>
-              ) : (
+              ) : !isSubOffice ? (
                 <div className="flex items-center gap-2">
                   <Button
                     onClick={() => setSubmitLROpen(true)}
@@ -671,7 +682,7 @@ const Index = () => {
                     Request Certificate
                   </Button>
                 </div>
-              )}
+              ) : null}
               <Button
                 onClick={handleLogout}
                 size="icon"
@@ -687,7 +698,7 @@ const Index = () => {
 
       <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         {/* Viewer banner */}
-        {!isAdmin && (
+        {!isAdmin && !isSubOffice && (
           <div className="mt-4 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -713,6 +724,18 @@ const Index = () => {
                 <FileText className="h-4 w-4" />
                 Request Certificate
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Sub-office monitor banner */}
+        {isSubOffice && (
+          <div className="mt-4 flex flex-col gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 shrink-0" />
+              You are signed in as a <strong>Sub-Office Monitor</strong>
+              {user?.subOffice ? ` for ${user.subOffice}` : ""}. You can monitor
+              the submissions of writers within your sub-office.
             </div>
           </div>
         )}
@@ -1223,7 +1246,7 @@ const Index = () => {
                           </TooltipTrigger>
                           <TooltipContent>Remove from tracker</TooltipContent>
                         </Tooltip>
-                      ) : resource.status === "disapproved" ? (
+                      ) : !isSubOffice && resource.status === "disapproved" ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -1267,7 +1290,7 @@ const Index = () => {
       )}
 
       {/* My Certificate Requests Section (Viewer only) */}
-      {!isAdmin && (
+      {!isAdmin && !isSubOffice && (
         <ViewerCertificateRequests
           requests={requests}
           viewerEmail={user?.email ?? ""}
@@ -1488,6 +1511,11 @@ const Index = () => {
         onToggleChecklistItem={toggleChecklistItem}
         onEdit={handleEditFromSheet}
         canUpdate={isAdmin}
+        onAddWriterRemark={
+          !isAdmin && !isSubOffice
+            ? (id, remark) => addWriterRemark(id, remark, user?.name ?? "Writer")
+            : undefined
+        }
       />
 
       {!isAdmin && (

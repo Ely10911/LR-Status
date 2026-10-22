@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Building2,
   Eye,
   Loader2,
   Lock,
@@ -22,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, type ViewerAccountType } from "@/hooks/use-auth";
 import { useVisitors } from "@/hooks/use-visitors";
 import { SCHOOLS_BY_SUB_OFFICE, SUB_OFFICES } from "@/lib/schools";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ export default function Login() {
   const [viewerName, setViewerName] = useState<string>("");
   const [viewerEmail, setViewerEmail] = useState<string>("");
   const [regName, setRegName] = useState<string>("");
+  const [regAccountType, setRegAccountType] = useState<ViewerAccountType>("writer");
   const [regSubOffice, setRegSubOffice] = useState<string>("");
   const [regSchool, setRegSchool] = useState<string>("");
   const [regEmail, setRegEmail] = useState<string>("");
@@ -126,7 +128,7 @@ export default function Login() {
       setError("Please select your sub-office.");
       return;
     }
-    if (!regSchool) {
+    if (regAccountType === "writer" && !regSchool) {
       setError("Please select your school.");
       return;
     }
@@ -145,6 +147,7 @@ export default function Login() {
       email: trimmedEmail,
       school: regSchool,
       subOffice: regSubOffice,
+      accountType: regAccountType,
     });
     setPending(false);
 
@@ -155,7 +158,10 @@ export default function Login() {
 
     logVisitor(trimmedName, trimmedEmail);
     toast.success(`Welcome, ${trimmedName}`, {
-      description: "Your viewer account has been registered.",
+      description:
+        regAccountType === "sub-office"
+          ? "Your sub-office monitor account has been registered."
+          : "Your viewer account has been registered.",
     });
     navigate("/");
   };
@@ -169,6 +175,7 @@ export default function Login() {
     setViewerEmail("");
     setViewerAction("signin");
     setRegName("");
+    setRegAccountType("writer");
     setRegSubOffice("");
     setRegSchool("");
     setRegEmail("");
@@ -416,6 +423,45 @@ export default function Login() {
                     status. You will sign in with your registered name and email.
                   </p>
 
+                  {/* Account type */}
+                  <div className="space-y-2">
+                    <Label>Account Type</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRegAccountType("writer")}
+                        className={cn(
+                          "flex flex-col items-center gap-1 rounded-lg border p-3 text-center text-xs font-semibold transition-all",
+                          regAccountType === "writer"
+                            ? "border-primary bg-primary/5 text-primary ring-2 ring-ring"
+                            : "border-border text-muted-foreground hover:border-foreground/30",
+                        )}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Writer / School
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          Submit learning resources
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRegAccountType("sub-office")}
+                        className={cn(
+                          "flex flex-col items-center gap-1 rounded-lg border p-3 text-center text-xs font-semibold transition-all",
+                          regAccountType === "sub-office"
+                            ? "border-primary bg-primary/5 text-primary ring-2 ring-ring"
+                            : "border-border text-muted-foreground hover:border-foreground/30",
+                        )}
+                      >
+                        <Building2 className="h-4 w-4" />
+                        Sub-Office
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          Monitor your writers' submissions
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="regName">Complete Name</Label>
                     <div className="relative">
@@ -456,32 +502,34 @@ export default function Login() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="regSchool">School</Label>
-                    <div className="relative">
-                      <SchoolIcon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Select
-                        onValueChange={setRegSchool}
-                        value={regSchool}
-                        disabled={pending || !regSubOffice}
-                      >
-                        <SelectTrigger id="regSchool" className="pl-9">
-                          <SelectValue
-                            placeholder={
-                              regSubOffice ? "Select school" : "Select a sub-office first"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(SCHOOLS_BY_SUB_OFFICE[regSubOffice] ?? []).map((school) => (
-                            <SelectItem key={school} value={school}>
-                              {school}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  {regAccountType === "writer" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="regSchool">School</Label>
+                      <div className="relative">
+                        <SchoolIcon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Select
+                          onValueChange={setRegSchool}
+                          value={regSchool}
+                          disabled={pending || !regSubOffice}
+                        >
+                          <SelectTrigger id="regSchool" className="pl-9">
+                            <SelectValue
+                              placeholder={
+                                regSubOffice ? "Select school" : "Select a sub-office first"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(SCHOOLS_BY_SUB_OFFICE[regSubOffice] ?? []).map((school) => (
+                              <SelectItem key={school} value={school}>
+                                {school}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="regEmail">Email Address</Label>
@@ -514,10 +562,14 @@ export default function Login() {
                   >
                     {pending ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : regAccountType === "sub-office" ? (
+                      <Building2 className="h-5 w-5" />
                     ) : (
                       <UserPlus className="h-5 w-5" />
                     )}
-                    Create Viewer Account
+                    {regAccountType === "sub-office"
+                      ? "Create Sub-Office Account"
+                      : "Create Viewer Account"}
                   </Button>
                 </form>
               )}

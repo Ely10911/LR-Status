@@ -260,6 +260,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          role: string
           school: string
           sub_office: string
         }
@@ -268,6 +269,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          role?: string
           school: string
           sub_office: string
         }
@@ -276,6 +278,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          role?: string
           school?: string
           sub_office?: string
         }

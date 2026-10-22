@@ -1,4 +1,4 @@
-import { UploadCloud, RefreshCcw, Trash2, Bell, Inbox } from "lucide-react";
+import { UploadCloud, RefreshCcw, MessageSquarePlus, Trash2, Bell, Inbox } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 function NotificationIcon({ notification }: { notification: AppNotification }) {
   if (notification.type === "new-submission") {
     return <UploadCloud className="h-4 w-4 text-sky-600" />;
+  }
+  if (notification.type === "writer-remark") {
+    return <MessageSquarePlus className="h-4 w-4 text-indigo-600" />;
   }
   const disapproved = notification.resourceStatus === "disapproved";
   return (
