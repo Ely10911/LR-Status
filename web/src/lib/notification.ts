@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export type NotificationAudience = "admin" | "viewer";
 
 /** Kind of event that produced the notification. */
-export type NotificationType = "new-submission" | "status-change" | "writer-remark";
+export type NotificationType = "new-submission" | "status-change" | "writer-remark" | "admin-remark";
 
 export interface AppNotification {
   id: string;

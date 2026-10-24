@@ -593,6 +593,55 @@ export function useResources() {
     })();
   }, []);
 
+  /**
+   * Admin-side remark on any LR at any time, without changing its status
+   * (e.g. notes to the writer). Appends a history entry and notifies the
+   * submitting viewer when the LR has a submitter email.
+   */
+  const addAdminRemark = useCallback((id: string, remark: string, adminName: string) => {
+    const text = remark.trim();
+    if (!text) return;
+    const now = new Date().toISOString();
+    const remarks = `Admin remark: ${text}`;
+    const target = resourcesRef.current.find((r) => r.id === id);
+
+    setResources((prev) =>
+      prev.map((resource) =>
+        resource.id === id
+          ? {
+              ...resource,
+              history: [
+                ...resource.history,
+                { status: resource.status, date: now, remarks },
+              ],
+            }
+          : resource,
+      ),
+    );
+
+    // Sync to Supabase and notify the submitting viewer.
+    (async () => {
+      await supabase.from("resource_history").insert({
+        resource_id: id,
+        status: target?.status ?? "submitted",
+        date: now,
+        remarks,
+      });
+      if (target?.submittedByEmail) {
+        await pushNotification({
+          audience: "viewer",
+          targetEmail: target.submittedByEmail,
+          type: "admin-remark",
+          title: target.title,
+          message: `${adminName} posted a remark on your submitted LR "${target.title}" (${target.code}): ${text}`,
+          resourceId: id,
+          resourceCode: target.code,
+          resourceStatus: target.status,
+        });
+      }
+    })();
+  }, []);
+
   const removeResource = useCallback((id: string) => {
     setResources((prev) => prev.filter((resource) => resource.id !== id));
 
@@ -610,6 +659,7 @@ export function useResources() {
     editResource,
     resubmitResource,
     addWriterRemark,
+    addAdminRemark,
     removeResource,
     loading,
   };

@@ -51,6 +51,8 @@ interface ResourceDetailSheetProps {
   canUpdate: boolean;
   /** Present for writers: posts an update remark on their submitted LR. */
   onAddWriterRemark?: (id: string, remark: string) => void;
+  /** Present for admins: posts a remark on any LR at any time, without a status change. */
+  onAddAdminRemark?: (id: string, remark: string) => void;
 }
 
 export function ResourceDetailSheet({
@@ -62,15 +64,18 @@ export function ResourceDetailSheet({
   onEdit,
   canUpdate,
   onAddWriterRemark,
+  onAddAdminRemark,
 }: ResourceDetailSheetProps) {
   const [nextStatus, setNextStatus] = useState<LRStatus | null>(null);
   const [remarks, setRemarks] = useState<string>("");
   const [writerRemark, setWriterRemark] = useState<string>("");
+  const [adminRemark, setAdminRemark] = useState<string>("");
 
   useEffect(() => {
     setNextStatus(null);
     setRemarks("");
     setWriterRemark("");
+    setAdminRemark("");
   }, [resource?.id, resource?.status]);
 
   if (!resource) return null;
@@ -118,6 +123,18 @@ export function ResourceDetailSheet({
       description: "The QA admin has been notified of your remark.",
     });
     setWriterRemark("");
+  };
+
+  const handleAddAdminRemark = () => {
+    const text = adminRemark.trim();
+    if (!text || !onAddAdminRemark) return;
+    onAddAdminRemark(resource.id, text);
+    toast.success("Remark posted", {
+      description: resource.submittedByEmail
+        ? "The writer has been notified of your remark."
+        : undefined,
+    });
+    setAdminRemark("");
   };
 
   return (
@@ -368,6 +385,11 @@ export function ResourceDetailSheet({
                         <MessageSquarePlus className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         {event.remarks}
                       </p>
+                    ) : event.remarks.startsWith("Admin remark:") ? (
+                      <p className="mt-0.5 flex items-start gap-1.5 text-sm font-medium text-violet-700">
+                        <MessageSquarePlus className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        {event.remarks}
+                      </p>
                     ) : (
                       <p className="mt-0.5 text-sm text-muted-foreground">{event.remarks}</p>
                     )}
@@ -404,6 +426,36 @@ export function ResourceDetailSheet({
               <Button
                 onClick={handleAddWriterRemark}
                 disabled={!writerRemark.trim()}
+                className="w-full gap-2"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                Post Remark
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Admin remarks — admins can note anything on any LR at any time, without a status change */}
+        {canUpdate && onAddAdminRemark && (
+          <>
+            <Separator className="my-5" />
+            <div className="space-y-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
+              <h3 className="font-display text-base font-semibold">Admin Remarks</h3>
+              <p className="text-xs text-violet-800">
+                Post a remark on this learning resource at any time — the writer
+                will be notified.
+              </p>
+              <Textarea
+                id="admin-remark"
+                value={adminRemark}
+                onChange={(e) => setAdminRemark(e.target.value)}
+                placeholder="e.g. Please upload the signed certification before Friday."
+                rows={3}
+                className="bg-background"
+              />
+              <Button
+                onClick={handleAddAdminRemark}
+                disabled={!adminRemark.trim()}
                 className="w-full gap-2"
               >
                 <MessageSquarePlus className="h-4 w-4" />

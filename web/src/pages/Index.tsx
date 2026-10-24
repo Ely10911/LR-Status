@@ -137,7 +137,7 @@ function endOfDay(date: Date): Date {
 }
 
 const Index = () => {
-  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, addWriterRemark, removeResource } = useResources();
+  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, addWriterRemark, addAdminRemark, removeResource } = useResources();
   const { user, isAdmin, isSubOffice, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
 
@@ -1524,6 +1524,11 @@ const Index = () => {
         onAddWriterRemark={
           !isAdmin && !isSubOffice
             ? (id, remark) => addWriterRemark(id, remark, user?.name ?? "Writer")
+            : undefined
+        }
+        onAddAdminRemark={
+          isAdmin
+            ? (id, remark) => addAdminRemark(id, remark, user?.name ?? "Admin")
             : undefined
         }
       />

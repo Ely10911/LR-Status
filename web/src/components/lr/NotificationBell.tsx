@@ -21,7 +21,10 @@ function NotificationIcon({ notification }: { notification: AppNotification }) {
     return <UploadCloud className="h-4 w-4 text-sky-600" />;
   }
   if (notification.type === "writer-remark") {
-    return <MessageSquarePlus className="h-4 w-4 text-indigo-600" />;
+    return <MessageSquarePlus className="h-4 w-4 text-sky-600" />;
+  }
+  if (notification.type === "admin-remark") {
+    return <MessageSquarePlus className="h-4 w-4 text-violet-600" />;
   }
   const disapproved = notification.resourceStatus === "disapproved";
   return (
