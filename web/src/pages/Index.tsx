@@ -33,6 +33,7 @@ import {
   Trash2,
   TrendingUp,
   UploadCloud,
+  User2,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -1209,6 +1210,15 @@ const Index = () => {
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {resource.subOffice}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-foreground/80">
+                        <User2 className="h-3 w-3 shrink-0" />
+                        {resource.developer}
+                        {isAdmin && resource.submittedByEmail && (
+                          <span className="font-normal text-muted-foreground">
+                            · {resource.submittedByEmail}
+                          </span>
+                        )}
                       </p>
                     </TableCell>
                     <TableCell className="hidden text-sm md:table-cell">
