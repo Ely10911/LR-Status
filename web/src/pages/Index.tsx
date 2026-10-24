@@ -1179,6 +1179,7 @@ const Index = () => {
                 <TableHead className="hidden lg:table-cell">Grade</TableHead>
                 <TableHead className="hidden xl:table-cell">School</TableHead>
                 <TableHead className="hidden sm:table-cell">Submitted</TableHead>
+                <TableHead className="hidden md:table-cell">Last Update</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
@@ -1186,7 +1187,7 @@ const Index = () => {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-14 text-center">
+                  <TableCell colSpan={9} className="py-14 text-center">
                     <p className="font-display text-lg font-semibold">No resources found</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Try adjusting your search or filters
@@ -1233,6 +1234,13 @@ const Index = () => {
                     </TableCell>
                     <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                       {formatDate(resource.dateSubmitted)}
+                    </TableCell>
+                    <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                      {formatDate(
+                        resource.history.length > 0
+                          ? resource.history[resource.history.length - 1].date
+                          : resource.dateSubmitted,
+                      )}
                     </TableCell>
                     <TableCell>
                       <StatusBadge
