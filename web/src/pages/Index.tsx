@@ -26,6 +26,7 @@ import {
   FileText,
   LogOut,
   Mail,
+  MessageSquare,
   Pencil,
   Plus,
   Search,
@@ -1239,41 +1240,71 @@ const Index = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      {isAdmin ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(resource);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Remove from tracker</TooltipContent>
-                        </Tooltip>
-                      ) : !isSubOffice && resource.status === "disapproved" ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleResubmit(resource);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Edit & Resubmit</TooltipContent>
-                        </Tooltip>
-                      ) : null}
+                      <div className="flex items-center gap-0.5">
+                        {/* Remarks & status — shown while a LR is under checking or disapproved */}
+                        {(resource.status === "for-checking" ||
+                          resource.status === "disapproved") && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="relative h-8 w-8 text-muted-foreground hover:text-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDetail(resource.id);
+                                }}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                                {resource.history.some(
+                                  (h) =>
+                                    h.remarks.startsWith("Writer remark:") ||
+                                    h.remarks.startsWith("Admin remark:"),
+                                ) && (
+                                  <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent ring-2 ring-background" />
+                                  )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>View Remarks & Status</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {isAdmin && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(resource);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Remove from tracker</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {!isAdmin && !isSubOffice && resource.status === "disapproved" && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResubmit(resource);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit & Resubmit</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
