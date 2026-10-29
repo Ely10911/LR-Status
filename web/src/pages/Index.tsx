@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  ArrowUp,
   Bell,
   BookOpenCheck,
   Building2,
@@ -212,6 +213,15 @@ const Index = () => {
   const [visitorError, setVisitorError] = useState<string>("");
   const [visitorSearch, setVisitorSearch] = useState<string>("");
   const [expandedVisitor, setExpandedVisitor] = useState<string | null>(null);
+
+  // Back-to-top shortcut: show the floating button after scrolling down a page.
+  const [showTopButton, setShowTopButton] = useState<boolean>(false);
+  useEffect(() => {
+    const onScroll = () => setShowTopButton(window.scrollY > 480);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Viewers only see the learning resources they submitted themselves.
   // Sub-office monitors see every submission from their own sub-office.
@@ -1536,6 +1546,21 @@ const Index = () => {
           </section>
         )}
       </main>
+
+      {/* Back-to-top shortcut */}
+      <button
+        type="button"
+        aria-label="Back to top"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        className={cn(
+          "fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-primary/20 bg-card text-primary shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground",
+          showTopButton
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-3 opacity-0",
+        )}
+      >
+        <ArrowUp className="h-5 w-5" />
+      </button>
 
       {isAdmin && (
         <AddResourceDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={addResource} />
