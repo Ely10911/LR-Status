@@ -1560,7 +1560,7 @@ const Index = () => {
         aria-label="Back to top"
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         className={cn(
-          "fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-primary/20 bg-card text-primary shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground",
+          "fixed bottom-6 left-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-primary/20 bg-card text-primary shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground",
           showTopButton
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none translate-y-3 opacity-0",
