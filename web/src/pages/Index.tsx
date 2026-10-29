@@ -523,6 +523,7 @@ const Index = () => {
       "Additional Authors",
       "Date Submitted",
       "Status",
+      "Remarks",
     ];
     const rows = visibleResources.map((r) => [
       r.code,
@@ -540,6 +541,12 @@ const Index = () => {
       `"${(r.additionalAuthors ?? []).map((a) => a.name).join("; ")}"`,
       formatDate(r.dateSubmitted),
       STATUS_CONFIG[r.status].label,
+      `"${r.history
+        .map(
+          (h) =>
+            `${formatDateTime(h.date)} - ${h.remarks.replace(/"/g, '""')}`,
+        )
+        .join(" | ")}"`,
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
