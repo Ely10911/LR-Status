@@ -126,3 +126,13 @@ All colors MUST be HSL.
     transform: translateY(0);
   }
 }
+
+/* Hide the platform-injected "Built with Rork" badge in the preview. */
+a[href*="rork.com"],
+a[href*="rork.app"],
+[href^="https://rork"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
