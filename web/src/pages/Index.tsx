@@ -559,6 +559,60 @@ const Index = () => {
     toast.success("Report exported", { description: "CSV file downloaded successfully." });
   };
 
+  /**
+   * Admin-only remarks report: one CSV row per history entry of every LR,
+   * so every status update, writer remark, and admin remark is listed.
+   */
+  const handleExportRemarks = () => {
+    const headers = [
+      "LR Code",
+      "Title",
+      "Current Status",
+      "School",
+      "Sub-Office",
+      "Date & Time",
+      "Entry Type",
+      "Remarks",
+    ];
+    const rows: string[][] = [];
+    for (const r of resources) {
+      for (const h of r.history) {
+        const entryType = h.remarks.startsWith("Writer remark:")
+          ? "Writer Remark"
+          : h.remarks.startsWith("Admin remark:")
+            ? "Admin Remark"
+            : "Status Update";
+        rows.push([
+          r.code,
+          `"${r.title}"`,
+          STATUS_CONFIG[r.status].label,
+          `"${r.school}"`,
+          `"${r.subOffice}"`,
+          formatDateTime(h.date),
+          entryType,
+          `"${h.remarks.replace(/"/g, '""')}"`,
+        ]);
+      }
+    }
+    if (rows.length === 0) {
+      toast.info("No remarks to export");
+      return;
+    }
+    // Newest entries first.
+    rows.reverse();
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `SDO-Batangas-LR-Remarks-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Remarks exported", {
+      description: `${rows.length} entries across all learning resources.`,
+    });
+  };
+
   // Summary statistics
   const approvedCount = counts.approved + counts.published;
   const approvalRate = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
@@ -826,15 +880,28 @@ const Index = () => {
               <FileBarChart className="h-5 w-5 text-primary" />
               <h2 className="font-display text-lg font-semibold">Report Summary</h2>
             </div>
-            <Button
-              onClick={handleExportReport}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button
+                  onClick={handleExportRemarks}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Export Remarks
+                </Button>
+              )}
+              <Button
+                onClick={handleExportReport}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           </div>
 
           {/* Key metrics row */}
