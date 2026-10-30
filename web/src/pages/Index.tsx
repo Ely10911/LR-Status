@@ -1637,7 +1637,12 @@ const Index = () => {
       </button>
 
       {isAdmin && (
-        <AddResourceDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={addResource} />
+        <AddResourceDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          onSubmit={addResource}
+          existingResources={resources}
+        />
       )}
       {editTarget && (isAdmin || isResubmit) && (
         <EditResourceDialog
@@ -1676,6 +1681,7 @@ const Index = () => {
           open={submitLROpen}
           onOpenChange={setSubmitLROpen}
           onSubmit={addResource}
+          existingResources={resources}
         />
       )}
 

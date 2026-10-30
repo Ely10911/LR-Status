@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -38,7 +39,10 @@ import {
   TERMS,
   RESOURCE_TYPES,
   WEEKS,
+  STATUS_CONFIG,
+  findDuplicateResource,
   type AdditionalAuthor,
+  type LearningResource,
   type ResourceType,
 } from "@/lib/lr";
 import {
@@ -68,10 +72,14 @@ interface AddResourceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: NewResourceInput) => void;
+  /** Already-tracked LRs used to detect duplicate submissions. */
+  existingResources?: LearningResource[];
 }
 
-export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceDialogProps) {
+export function AddResourceDialog({ open, onOpenChange, onSubmit, existingResources = [] }: AddResourceDialogProps) {
   const [additionalAuthors, setAdditionalAuthors] = useState<AdditionalAuthor[]>([]);
+  // Set when the new entry matches an LR already in the tracker.
+  const [duplicateError, setDuplicateError] = useState<string>("");
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -88,7 +96,23 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceD
     },
   });
 
+  const watchedTitle = form.watch("title");
+  const watchedSchool = form.watch("school");
+  useEffect(() => {
+    setDuplicateError("");
+  }, [watchedTitle, watchedSchool, open]);
+
   const handleSubmit = (values: FormValues) => {
+    // Duplicate guard: block logging an LR that is already in the tracker.
+    const duplicate = findDuplicateResource(existingResources, values.title, values.school);
+    if (duplicate) {
+      const message = `"${duplicate.title}" (${duplicate.code}) from ${duplicate.school} is already in the tracker. Its current status is "${STATUS_CONFIG[duplicate.status].label}". Each learning resource can only be logged once.`;
+      setDuplicateError(message);
+      toast.error("Duplicate entry blocked", {
+        description: `This LR is already tracked (${duplicate.code}).`,
+      });
+      return;
+    }
     onSubmit({
       title: values.title,
       resourceType: values.resourceType as ResourceType,
@@ -367,6 +391,19 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit }: AddResourceD
                 );
               }}
             />
+
+            {/* Duplicate entry notice */}
+            {duplicateError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                <p>
+                  <span className="font-semibold">Already tracked.</span> {duplicateError}
+                </p>
+              </div>
+            )}
 
             <div className="rounded-lg border bg-muted/40 p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

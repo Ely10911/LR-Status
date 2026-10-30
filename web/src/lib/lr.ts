@@ -381,6 +381,33 @@ function partialChecklist(checkedKeys: ChecklistItemKey[]): ChecklistItem[] {
   }));
 }
 
+/** Normalize a string for duplicate comparison: lowercase with collapsed whitespace. */
+function normalizeKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Find an already-tracked duplicate of a submission: same title from the same
+ * school (case-insensitive, whitespace-insensitive). Returns null when unique.
+ */
+export function findDuplicateResource(
+  resources: LearningResource[],
+  title: string,
+  school: string,
+  excludeId?: string,
+): LearningResource | null {
+  const titleKey = normalizeKey(title);
+  const schoolKey = normalizeKey(school);
+  return (
+    resources.find(
+      (r) =>
+        r.id !== excludeId &&
+        normalizeKey(r.title) === titleKey &&
+        normalizeKey(r.school) === schoolKey,
+    ) ?? null
+  );
+}
+
 export const SEED_RESOURCES: LearningResource[] = [
   seedResource({
     title: "Paghinuha ng Damdamin ng Tauhan sa Kuwento",

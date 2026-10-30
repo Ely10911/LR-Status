@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ExternalLink, UploadCloud } from "lucide-react";
+import { AlertTriangle, ExternalLink, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -41,7 +41,10 @@ import {
   RESOURCE_TYPES,
   WEEKS,
   UPLOAD_FORM_URL,
+  STATUS_CONFIG,
+  findDuplicateResource,
   type AdditionalAuthor,
+  type LearningResource,
   type ResourceType,
 } from "@/lib/lr";
 import {
@@ -71,6 +74,8 @@ interface SubmitLRDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: NewResourceInput) => void;
+  /** Already-tracked LRs used to detect duplicate submissions. */
+  existingResources?: LearningResource[];
 }
 
 /**
@@ -78,10 +83,12 @@ interface SubmitLRDialogProps {
  * After recording the details, the viewer is directed to the upload form
  * to attach the actual resource files.
  */
-export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogProps) {
+export function SubmitLRDialog({ open, onOpenChange, onSubmit, existingResources = [] }: SubmitLRDialogProps) {
   const { user } = useAuth();
   // Co-writers credited on this resource (used when there is more than one writer).
   const [coWriters, setCoWriters] = useState<AdditionalAuthor[]>([]);
+  // Set when the submission matches an LR already in the tracker.
+  const [duplicateError, setDuplicateError] = useState<string>("");
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -101,6 +108,7 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
   // Prefill from the viewer's registration (developer name, sub-office, school).
   useEffect(() => {
     if (!open) return;
+    setDuplicateError("");
     if (user?.name && !form.getValues("developer")) {
       form.setValue("developer", user.name);
     }
@@ -112,7 +120,23 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
     }
   }, [open, user, form]);
 
+  const watchedTitle = form.watch("title");
+  const watchedSchool = form.watch("school");
+  useEffect(() => {
+    setDuplicateError("");
+  }, [watchedTitle, watchedSchool]);
+
   const handleSubmit = (values: FormValues) => {
+    // Duplicate guard: block a second submission of the same LR (title + school).
+    const duplicate = findDuplicateResource(existingResources, values.title, values.school);
+    if (duplicate) {
+      const message = `"${duplicate.title}" (${duplicate.code}) from ${duplicate.school} has already been submitted. Its current status is "${STATUS_CONFIG[duplicate.status].label}". Each learning resource can only be submitted once.`;
+      setDuplicateError(message);
+      toast.error("Duplicate submission blocked", {
+        description: `This LR was already submitted (${duplicate.code}).`,
+      });
+      return;
+    }
     onSubmit({
       title: values.title,
       resourceType: values.resourceType as ResourceType,
@@ -431,6 +455,20 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit }: SubmitLRDialogP
                 All learning resources are submitted by SDO Batangas.
               </p>
             </div>
+
+            {/* Duplicate submission notice */}
+            {duplicateError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                <p>
+                  <span className="font-semibold">Already submitted.</span>{" "}
+                  {duplicateError}
+                </p>
+              </div>
+            )}
 
             <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
               <UploadCloud className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
