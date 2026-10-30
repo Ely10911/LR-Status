@@ -127,10 +127,21 @@ export function SubmitLRDialog({ open, onOpenChange, onSubmit, existingResources
   }, [watchedTitle, watchedSchool]);
 
   const handleSubmit = (values: FormValues) => {
-    // Duplicate guard: block a second submission of the same LR (title + school).
-    const duplicate = findDuplicateResource(existingResources, values.title, values.school);
+    // Duplicate guard: block a second submission of the same LR (all fields).
+    const duplicate = findDuplicateResource(existingResources, {
+      title: values.title,
+      resourceType: values.resourceType,
+      learningArea: values.learningArea,
+      gradeLevel: values.gradeLevel,
+      quarter: values.quarter,
+      week: values.week,
+      developer: values.developer,
+      position: values.position,
+      school: values.school,
+      subOffice: values.subOffice,
+    });
     if (duplicate) {
-      const message = `"${duplicate.title}" (${duplicate.code}) from ${duplicate.school} has already been submitted. Its current status is "${STATUS_CONFIG[duplicate.status].label}". Each learning resource can only be submitted once.`;
+      const message = `"${duplicate.title}" (${duplicate.code}) from ${duplicate.school} has already been submitted with the same details. Its current status is "${STATUS_CONFIG[duplicate.status].label}".`;
       setDuplicateError(message);
       toast.error("Duplicate submission blocked", {
         description: `This LR was already submitted (${duplicate.code}).`,

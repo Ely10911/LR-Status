@@ -103,10 +103,21 @@ export function AddResourceDialog({ open, onOpenChange, onSubmit, existingResour
   }, [watchedTitle, watchedSchool, open]);
 
   const handleSubmit = (values: FormValues) => {
-    // Duplicate guard: block logging an LR that is already in the tracker.
-    const duplicate = findDuplicateResource(existingResources, values.title, values.school);
+    // Duplicate guard: block logging an LR that is already in the tracker (all fields).
+    const duplicate = findDuplicateResource(existingResources, {
+      title: values.title,
+      resourceType: values.resourceType,
+      learningArea: values.learningArea,
+      gradeLevel: values.gradeLevel,
+      quarter: values.quarter,
+      week: values.week,
+      developer: values.developer,
+      position: values.position,
+      school: values.school,
+      subOffice: values.subOffice,
+    });
     if (duplicate) {
-      const message = `"${duplicate.title}" (${duplicate.code}) from ${duplicate.school} is already in the tracker. Its current status is "${STATUS_CONFIG[duplicate.status].label}". Each learning resource can only be logged once.`;
+      const message = `"${duplicate.title}" (${duplicate.code}) from ${duplicate.school} is already in the tracker with the same details. Its current status is "${STATUS_CONFIG[duplicate.status].label}".`;
       setDuplicateError(message);
       toast.error("Duplicate entry blocked", {
         description: `This LR is already tracked (${duplicate.code}).`,

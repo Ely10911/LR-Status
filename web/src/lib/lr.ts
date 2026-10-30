@@ -381,31 +381,45 @@ function partialChecklist(checkedKeys: ChecklistItemKey[]): ChecklistItem[] {
   }));
 }
 
-/** Normalize a string for duplicate comparison: lowercase with collapsed whitespace. */
-function normalizeKey(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+/** Fields compared when detecting a duplicate LR submission. */
+export interface DuplicateCheckInput {
+  title: string;
+  resourceType: string;
+  learningArea: string;
+  gradeLevel: string;
+  quarter: string;
+  week: string;
+  developer: string;
+  position: string;
+  school: string;
+  subOffice: string;
 }
 
 /**
- * Find an already-tracked duplicate of a submission: same title from the same
- * school (case-insensitive, whitespace-insensitive). Returns null when unique.
+ * Find an already-tracked duplicate of a submission: flagged only when ALL
+ * fields (title, type, area, grade, term, week, developer, position, school,
+ * sub-office) match an existing LR, ignoring letter case and extra whitespace.
+ * Returns null when the submission is unique.
  */
 export function findDuplicateResource(
   resources: LearningResource[],
-  title: string,
-  school: string,
+  input: DuplicateCheckInput,
   excludeId?: string,
 ): LearningResource | null {
-  const titleKey = normalizeKey(title);
-  const schoolKey = normalizeKey(school);
-  return (
-    resources.find(
-      (r) =>
-        r.id !== excludeId &&
-        normalizeKey(r.title) === titleKey &&
-        normalizeKey(r.school) === schoolKey,
-    ) ?? null
+  const keys = Object.entries(input).map(
+    ([key, value]) => [key, normalizeKey(String(value))] as const,
   );
+  const matches = (r: LearningResource): boolean =>
+    keys.every(
+      ([key, value]) =>
+        normalizeKey(String((r as unknown as Record<string, unknown>)[key] ?? "")) === value,
+    );
+  return resources.find((r) => r.id !== excludeId && matches(r)) ?? null;
+}
+
+/** Normalize a string for duplicate comparison: lowercase with collapsed whitespace. */
+function normalizeKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export const SEED_RESOURCES: LearningResource[] = [
