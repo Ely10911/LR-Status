@@ -143,7 +143,7 @@ const Index = () => {
   const { user, isAdmin, isSubOffice, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
 
-  // Group visit entries into unique users and sort by visit count (most frequent first).
+  // Group visit entries into unique users and sort by last visit (most recent first).
   const groupedVisitors = useMemo(() => {
     type VisitorGroup = {
       emailKey: string;
@@ -176,8 +176,7 @@ const Index = () => {
     return Array.from(groups.values())
       .map((g) => ({ ...g, count: g.visits.length, lastVisit: g.lastSeen }))
       .sort(
-        (a, b) =>
-          b.count - a.count || new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime(),
+        (a, b) => new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime(),
       );
   }, [visitors]);
 
