@@ -15,22 +15,30 @@ async function fetchNotifications(
   isAdmin: boolean,
   email: string,
 ): Promise<AppNotification[]> {
-  let query = supabase
-    .from("notifications")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const PAGE = 1000;
+  const rows: NotificationRow[] = [];
+  let from = 0;
+  for (;;) {
+    let q = supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE - 1);
 
-  query = isAdmin
-    ? query.eq("audience", "admin")
-    : query.eq("audience", "viewer").eq("target_email", email);
+    q = isAdmin
+      ? q.eq("audience", "admin")
+      : q.eq("audience", "viewer").eq("target_email", email);
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("Failed to fetch notifications from Supabase", error);
-    return [];
+    const { data, error } = await q;
+    if (error) {
+      console.error("Failed to fetch notifications from Supabase", error);
+      break;
+    }
+    rows.push(...((data ?? []) as NotificationRow[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
-  return (data as NotificationRow[]).map(mapNotificationRow);
+  return rows.map(mapNotificationRow);
 }
 
 /**

@@ -28,15 +28,24 @@ function mapRow(row: VisitorRow): VisitorEntry {
 
 /** Fetch all visitors from Supabase, newest first. */
 async function fetchVisitors(): Promise<VisitorEntry[]> {
-  const { data, error } = await supabase
-    .from("visitors")
-    .select("*")
-    .order("visited_at", { ascending: false });
-  if (error) {
-    console.error("Failed to fetch visitors from Supabase", error);
-    return [];
+  const PAGE = 1000;
+  const rows: VisitorRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("visitors")
+      .select("*")
+      .order("visited_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("Failed to fetch visitors from Supabase", error);
+      break;
+    }
+    rows.push(...((data ?? []) as VisitorRow[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
-  return (data as VisitorRow[]).map(mapRow);
+  return rows.map(mapRow);
 }
 
 /**

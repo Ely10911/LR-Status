@@ -57,15 +57,24 @@ function generateSlipNumber(counter: number): string {
 
 /** Fetch all certificate requests from Supabase, newest first. */
 async function fetchRequests(): Promise<CertificateRequest[]> {
-  const { data, error } = await supabase
-    .from("certificate_requests")
-    .select("*")
-    .order("requested_at", { ascending: false });
-  if (error) {
-    console.error("Failed to fetch certificate requests from Supabase", error);
-    return [];
+  const PAGE = 1000;
+  const rows: CertRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("certificate_requests")
+      .select("*")
+      .order("requested_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("Failed to fetch certificate requests from Supabase", error);
+      break;
+    }
+    rows.push(...((data ?? []) as CertRow[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
-  return (data as CertRow[]).map(mapRow);
+  return rows.map(mapRow);
 }
 
 /** Get the current slip counter from the app_counters table. */

@@ -168,36 +168,53 @@ async function seedIfEmpty(): Promise<void> {
   }
 }
 
+/**
+ * Fetch every row of a table, paging through PostgREST's default 1000-row
+ * response limit so recent entries are never silently dropped.
+ */
+async function fetchAllRows<T>(
+  table: string,
+  orderColumn: string,
+  ascending: boolean,
+): Promise<T[]> {
+  const PAGE = 1000;
+  const all: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .order(orderColumn, { ascending })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error(`Failed to fetch ${table} from Supabase`, error);
+      break;
+    }
+    all.push(...((data ?? []) as T[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 /** Fetch all resources with their history from Supabase. */
 async function fetchResources(): Promise<LearningResource[]> {
-  const { data: rows, error } = await supabase
-    .from("learning_resources")
-    .select("*")
-    .order("date_submitted", { ascending: false });
-  if (error) {
-    console.error("Failed to fetch resources from Supabase", error);
-    return [];
-  }
-  if (!rows || rows.length === 0) return [];
+  const rows = await fetchAllRows<ResourceRow>(
+    "learning_resources",
+    "date_submitted",
+    false,
+  );
+  if (rows.length === 0) return [];
 
-  const { data: histRows, error: histError } = await supabase
-    .from("resource_history")
-    .select("*")
-    .order("date", { ascending: true });
-  if (histError) {
-    console.error("Failed to fetch resource history from Supabase", histError);
-  }
-
+  const histRows = await fetchAllRows<HistoryRow>("resource_history", "date", true);
   const historyByResource = new Map<string, HistoryRow[]>();
-  for (const h of (histRows ?? []) as HistoryRow[]) {
+  for (const h of histRows) {
     const list = historyByResource.get(h.resource_id) ?? [];
     list.push(h);
     historyByResource.set(h.resource_id, list);
   }
 
-  return (rows as ResourceRow[]).map((row) =>
-    mapRowToResource(row, historyByResource.get(row.id) ?? []),
-  );
+  return rows.map((row) => mapRowToResource(row, historyByResource.get(row.id) ?? []));
 }
 
 /**
