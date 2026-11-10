@@ -684,7 +684,12 @@ const Index = () => {
                   <TooltipContent>Visitor Log</TooltipContent>
                 </Tooltip>
               )}
-              <NotificationBell />
+              <NotificationBell
+                onOpenResource={(id) => {
+                  setSelectedId(id);
+                  setDetailOpen(true);
+                }}
+              />
               {/* User badge */}
               <div className="hidden flex-col items-end sm:flex">
                 <span className="text-sm font-semibold text-primary-foreground">

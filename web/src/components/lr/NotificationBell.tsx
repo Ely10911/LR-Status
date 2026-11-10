@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { UploadCloud, RefreshCcw, MessageSquarePlus, Trash2, Bell, Inbox } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,10 +37,10 @@ function NotificationIcon({ notification }: { notification: AppNotification }) {
 
 function NotificationItem({
   notification,
-  onRead,
+  onOpen,
 }: {
   notification: AppNotification;
-  onRead: (id: string) => void;
+  onOpen: () => void;
 }) {
   const statusLabel = notification.resourceStatus
     ? STATUS_CONFIG[notification.resourceStatus as LRStatus]?.label
@@ -48,7 +49,8 @@ function NotificationItem({
   return (
     <button
       type="button"
-      onClick={() => onRead(notification.id)}
+      onClick={() => onOpen()}
+      title="Open this learning resource"
       className="flex w-full items-start gap-3 bg-primary/5 px-4 py-3 text-left transition-colors hover:bg-accent/50"
     >
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -79,13 +81,28 @@ function NotificationItem({
 /**
  * Header bell with unread badge and a popover listing the signed-in
  * user's notifications (admin: new submissions; viewer: status changes).
+ * Clicking a notification marks it read and, when it points at an LR,
+ * opens that resource's detail sheet.
  */
-export function NotificationBell() {
+export function NotificationBell({
+  onOpenResource,
+}: {
+  onOpenResource?: (resourceId: string) => void;
+} = {}) {
   const { notifications, unreadCount, loading, markRead, clearNotifications } =
     useNotifications();
+  const [open, setOpen] = useState(false);
+
+  const handleOpenResource = (notification: AppNotification) => {
+    markRead(notification.id);
+    if (notification.resourceId && onOpenResource) {
+      setOpen(false);
+      onOpenResource(notification.resourceId);
+    }
+  };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           size="icon"
@@ -136,7 +153,7 @@ export function NotificationBell() {
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
-                  onRead={markRead}
+                  onOpen={() => handleOpenResource(notification)}
                 />
               ))}
             </div>
