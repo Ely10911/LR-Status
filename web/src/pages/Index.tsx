@@ -139,7 +139,7 @@ function endOfDay(date: Date): Date {
 }
 
 const Index = () => {
-  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, addWriterRemark, addAdminRemark, removeResource } = useResources();
+  const { resources, addResource, updateStatus, toggleChecklistItem, editResource, resubmitResource, addWriterRemark, addAdminRemark, removeResource, refresh } = useResources();
   const { user, isAdmin, isSubOffice, logout } = useAuth();
   const { visitors, addManualVisitor, removeVisitor } = useVisitors();
 
@@ -198,6 +198,12 @@ const Index = () => {
   const [isResubmit, setIsResubmit] = useState<boolean>(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
+
+  // Always re-fetch when the detail sheet opens, so remarks posted by the
+  // writer (or admin) just before opening are visible immediately.
+  useEffect(() => {
+    if (detailOpen) void refresh();
+  }, [detailOpen, refresh]);
 
   // Certificate request state
   const [certRequestOpen, setCertRequestOpen] = useState<boolean>(false);

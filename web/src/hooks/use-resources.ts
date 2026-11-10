@@ -229,6 +229,46 @@ export function useResources() {
     };
   }, []);
 
+  /**
+   * Re-fetch every resource from Supabase. Used to pick up changes made by
+   * other users (e.g. writer remarks) without a full page reload.
+   */
+  const refresh = useCallback(async () => {
+    const data = await fetchResources();
+    setResources(data);
+  }, []);
+
+  // Realtime sync: when any other device adds/changes an LR or a history
+  // entry (remarks, checklist ticks), re-fetch so the tables and the detail
+  // sheet always show the latest state. Bursts from one mutation are
+  // coalesced with a short debounce.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel("learning-resources:sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "learning_resources" },
+        () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => void refresh(), 300);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "resource_history" },
+        () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => void refresh(), 300);
+        },
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh]);
+
   const addResource = useCallback((input: NewResourceInput): LearningResource => {
     const now = new Date().toISOString();
     const serial = Date.now().toString().slice(-4);
@@ -661,6 +701,7 @@ export function useResources() {
     addWriterRemark,
     addAdminRemark,
     removeResource,
+    refresh,
     loading,
   };
 }
