@@ -116,6 +116,32 @@ function useCertificatesProvider() {
     };
   }, []);
 
+  // Realtime sync: when any other device adds, updates, or removes a
+  // certificate request, re-fetch so every signed-in user sees the same list.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refetch = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const [data, cnt] = await Promise.all([fetchRequests(), fetchCounter()]);
+        setRequests(data);
+        setCounter(cnt);
+      }, 300);
+    };
+    const channel = supabase
+      .channel("certificate-requests:sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "certificate_requests" },
+        refetch,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
   const addRequest = useCallback(
     (input: AddCertificateRequestInput): CertificateRequest => {
       const slipNumber = generateSlipNumber(counter);

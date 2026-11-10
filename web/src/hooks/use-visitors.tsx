@@ -61,6 +61,31 @@ function useVisitorsProvider() {
     };
   }, []);
 
+  // Realtime sync: when any other device logs or removes a visitor,
+  // re-fetch so every signed-in admin sees the same list.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refetch = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const data = await fetchVisitors();
+        setVisitors(data);
+      }, 300);
+    };
+    const channel = supabase
+      .channel("visitors:sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "visitors" },
+        refetch,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
   /** Record a visitor entry (used on viewer sign-in and manual admin log). */
   const logVisitor = useCallback((name: string, email: string): VisitorEntry => {
     const entry: VisitorEntry = {
