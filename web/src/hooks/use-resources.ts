@@ -241,30 +241,31 @@ export function useResources() {
   // Realtime sync: when any other device adds/changes an LR or a history
   // entry (remarks, checklist ticks), re-fetch so the tables and the detail
   // sheet always show the latest state. Bursts from one mutation are
-  // coalesced with a short debounce.
+  // coalesced with a short debounce. A 20s polling interval backs this up
+  // in case realtime replication is unavailable.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void refresh(), 300);
+    };
     const channel = supabase
       .channel("learning-resources:sync")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "learning_resources" },
-        () => {
-          if (timer) clearTimeout(timer);
-          timer = setTimeout(() => void refresh(), 300);
-        },
+        scheduleRefresh,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "resource_history" },
-        () => {
-          if (timer) clearTimeout(timer);
-          timer = setTimeout(() => void refresh(), 300);
-        },
+        scheduleRefresh,
       )
       .subscribe();
+    const poll = setInterval(() => void refresh(), 20_000);
     return () => {
       if (timer) clearTimeout(timer);
+      clearInterval(poll);
       void supabase.removeChannel(channel);
     };
   }, [refresh]);

@@ -80,8 +80,14 @@ function useVisitorsProvider() {
         refetch,
       )
       .subscribe();
+    // Polling fallback in case realtime replication is unavailable.
+    const poll = setInterval(async () => {
+      const data = await fetchVisitors();
+      setVisitors(data);
+    }, 20_000);
     return () => {
       if (timer) clearTimeout(timer);
+      clearInterval(poll);
       void supabase.removeChannel(channel);
     };
   }, []);
