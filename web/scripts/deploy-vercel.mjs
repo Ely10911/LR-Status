@@ -1,11 +1,11 @@
 /**
- * Deploys the prebuilt web/dist to the "lr-status" project on Vercel.
+ * Deploys the prebuilt web/dist to the "lr-status-app" project on Vercel.
  * Usage: VERCEL_TOKEN=... bun web/scripts/deploy-vercel.mjs
  */
 import fs from "node:fs";
 import path from "node:path";
 
-const PROJECT = "prj_YcaM9mqb9SonweqlkWOzwM1SFgbl";
+const PROJECT = process.env.VERCEL_PROJECT ?? "prj_gW38G3GuWU45f9LdxtUhaO6LfkUc";
 const DIST = path.resolve(process.cwd(), "dist");
 const token = process.env.VERCEL_TOKEN;
 
@@ -45,7 +45,7 @@ const res = await fetch("https://api.vercel.com/v13/deployments", {
   method: "POST",
   headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   body: JSON.stringify({
-    name: "lr-status",
+    name: "lr-status-app",
     project: PROJECT,
     target: "production",
     files,
