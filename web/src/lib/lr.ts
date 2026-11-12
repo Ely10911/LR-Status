@@ -306,6 +306,17 @@ export const WEEKS: string[] = [
   ),
 ];
 
+/**
+ * The date an LR became Published — the latest "published" entry in its
+ * status history — or null when it has not been published yet.
+ */
+export function getPublishedDate(resource: LearningResource): string | null {
+  for (let i = resource.history.length - 1; i >= 0; i--) {
+    if (resource.history[i].status === "published") return resource.history[i].date;
+  }
+  return null;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-PH", {
     year: "numeric",

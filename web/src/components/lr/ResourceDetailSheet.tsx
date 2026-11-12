@@ -32,6 +32,7 @@ import {
   CHECKLIST_ITEMS,
   countChecked,
   formatDate,
+  getPublishedDate,
   isChecklistComplete,
   STATUS_CONFIG,
   STATUS_TRANSITIONS,
@@ -89,6 +90,7 @@ export function ResourceDetailSheet({
   // Each resubmission adds a "Resubmitted…" history entry; N entries = revision N+1.
   const revisionCount =
     resource.history.filter((entry) => entry.remarks?.startsWith("Resubmitted")).length;
+  const publishedDate = getPublishedDate(resource);
 
   const handleUpdate = () => {
     if (!nextStatus) return;
@@ -197,6 +199,14 @@ export function ResourceDetailSheet({
             </p>
             <p className="mt-1 font-semibold">{formatDate(resource.dateSubmitted)}</p>
           </div>
+          {publishedDate && (
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <BadgeCheck className="h-3.5 w-3.5" /> Published
+              </p>
+              <p className="mt-1 font-semibold">{formatDate(publishedDate)}</p>
+            </div>
+          )}
         </div>
 
         {/* Developer, Position, School & Sub-office */}
