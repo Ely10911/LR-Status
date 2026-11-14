@@ -125,9 +125,14 @@ function normalizeChecklist(items: ChecklistItem[] | null): ChecklistItem[] {
 
 /** Seed the database with initial resources if the table is empty. */
 async function seedIfEmpty(): Promise<void> {
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("learning_resources")
     .select("*", { count: "exact", head: true });
+  // Never seed on a failed count — a network error must not duplicate data.
+  if (error) {
+    console.error("Skipping seed: failed to count learning_resources", error);
+    return;
+  }
   if (count && count > 0) return;
 
   for (const resource of SEED_RESOURCES) {
@@ -218,6 +223,51 @@ async function fetchResources(): Promise<LearningResource[]> {
 }
 
 /**
+ * Insert a history row, retrying once. The status timeline must never silently
+ * miss an entry — a failed insert made statuses appear to "go back" after the
+ * next refresh.
+ */
+async function insertHistoryRetry(
+  entry: {
+    resource_id: string;
+    status: string;
+    date: string;
+    remarks: string;
+    checking_items?: ChecklistItem[] | null;
+  },
+): Promise<void> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const { error } = await supabase.from("resource_history").insert(entry);
+    if (!error) return;
+    console.error(
+      `Failed to save status history (attempt ${attempt}/2) for ${entry.resource_id}`,
+      error,
+    );
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 1200));
+  }
+}
+
+/**
+ * Run a mutation's DB writes with background refreshes paused, then reconcile
+ * local state with the database once every write has landed. A poll response
+ * read mid-write would otherwise replace the optimistic status with stale
+ * data (status "goes back", then proceeds on the next refresh).
+ */
+function withMutation(
+  mutating: { current: boolean },
+  setResources: (data: LearningResource[]) => void,
+  fn: () => Promise<void>,
+): void {
+  mutating.current = true;
+  fn()
+    .catch((e) => console.error("Mutation failed", e))
+    .finally(() => {
+      mutating.current = false;
+      void fetchResources().then(setResources);
+    });
+}
+
+/**
  * Supabase-backed store for tracked learning resources.
  * Data is fetched from the database on mount and synced on every mutation.
  */
@@ -230,6 +280,11 @@ export function useResources() {
   useEffect(() => {
     resourcesRef.current = resources;
   }, [resources]);
+
+  // While one of this client's own writes is still in flight, background
+  // refreshes are paused: a poll response read mid-write would replace the
+  // optimistic status with stale data (status "goes back", then proceeds).
+  const mutating = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,6 +306,7 @@ export function useResources() {
    * other users (e.g. writer remarks) without a full page reload.
    */
   const refresh = useCallback(async () => {
+    if (mutating.current) return;
     const data = await fetchResources();
     setResources(data);
   }, []);
@@ -381,15 +437,18 @@ export function useResources() {
       );
 
       // Sync to Supabase
-      (async () => {
-        await supabase
+      withMutation(mutating, setResources, async () => {
+        const { error: updErr } = await supabase
           .from("learning_resources")
           .update({
             status,
             updated_at: now,
           })
           .eq("id", id);
-        await supabase.from("resource_history").insert({
+        if (updErr) {
+          console.error("Failed to update resource status in Supabase", updErr);
+        }
+        await insertHistoryRetry({
           resource_id: id,
           status,
           date: now,
@@ -410,7 +469,7 @@ export function useResources() {
             resourceStatus: status,
           });
         }
-      })();
+      });
     },
     [],
   );
@@ -441,7 +500,7 @@ export function useResources() {
       );
 
       // Sync to Supabase
-      (async () => {
+      withMutation(mutating, setResources, async () => {
         const resource = (await supabase
           .from("learning_resources")
           .select("checking_items")
@@ -465,7 +524,7 @@ export function useResources() {
               updated_at: now,
             })
             .eq("id", id);
-          await supabase.from("resource_history").insert({
+          await insertHistoryRetry({
             resource_id: id,
             status: "for-checking",
             date: now,
@@ -473,7 +532,7 @@ export function useResources() {
             checking_items: updatedItems,
           });
         }
-      })();
+      });
     },
     [],
   );
@@ -560,7 +619,7 @@ export function useResources() {
     );
 
     // Sync to Supabase
-    (async () => {
+    withMutation(mutating, setResources, async () => {
       await supabase
         .from("learning_resources")
         .update({
@@ -580,7 +639,7 @@ export function useResources() {
           updated_at: now,
         })
         .eq("id", id);
-      await supabase.from("resource_history").insert({
+      await insertHistoryRetry({
         resource_id: id,
         status: "submitted",
         date: now,
@@ -600,7 +659,7 @@ export function useResources() {
           resourceStatus: "submitted",
         });
       }
-    })();
+    });
   }, []);
 
   /**
@@ -630,8 +689,8 @@ export function useResources() {
     );
 
     // Sync to Supabase and notify the admin.
-    (async () => {
-      await supabase.from("resource_history").insert({
+    withMutation(mutating, setResources, async () => {
+      await insertHistoryRetry({
         resource_id: id,
         status: target?.status ?? "submitted",
         date: now,
@@ -648,7 +707,7 @@ export function useResources() {
           resourceStatus: target.status,
         });
       }
-    })();
+    });
   }, []);
 
   /**
@@ -678,8 +737,8 @@ export function useResources() {
     );
 
     // Sync to Supabase and notify the submitting viewer.
-    (async () => {
-      await supabase.from("resource_history").insert({
+    withMutation(mutating, setResources, async () => {
+      await insertHistoryRetry({
         resource_id: id,
         status: target?.status ?? "submitted",
         date: now,
@@ -697,16 +756,17 @@ export function useResources() {
           resourceStatus: target.status,
         });
       }
-    })();
+    });
   }, []);
 
   const removeResource = useCallback((id: string) => {
     setResources((prev) => prev.filter((resource) => resource.id !== id));
 
     // Sync to Supabase (history cascades on delete)
-    (async () => {
-      await supabase.from("learning_resources").delete().eq("id", id);
-    })();
+    withMutation(mutating, setResources, async () => {
+      const { error } = await supabase.from("learning_resources").delete().eq("id", id);
+      if (error) console.error("Failed to delete resource from Supabase", error);
+    });
   }, []);
 
   return {
