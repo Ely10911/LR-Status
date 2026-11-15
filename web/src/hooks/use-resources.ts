@@ -267,7 +267,12 @@ function withMutation(
       // Invalidate any fetch already in flight when the write landed —
       // applying it would visually revert the change the user just made.
       dataEpoch.current++;
-      void fetchResources().then(setResources);
+      const epoch = dataEpoch.current;
+      void fetchResources().then((data) => {
+        // Skip if the user mutated again while this reconcile was fetching.
+        if (mutating.current || epoch !== dataEpoch.current) return;
+        setResources(data);
+      });
     });
 }
 
@@ -487,18 +492,25 @@ export function useResources() {
   const toggleChecklistItem = useCallback(
     (id: string, itemKey: ChecklistItemKey) => {
       const now = new Date().toISOString();
+      // Compute the new checklist from the state the user sees, so rapid
+      // clicks can't be overwritten by a database re-read racing the writes.
+      const base = resourcesRef.current.find((r) => r.id === id);
+      if (!base) return;
+      const updatedItems = normalizeChecklist(base.checklistItems).map((item) =>
+        item.key === itemKey
+          ? { ...item, checked: !item.checked, date: !item.checked ? now : null }
+          : item,
+      );
+      const label = CHECKLIST_ITEMS.find((i) => i.key === itemKey)?.label;
+      const isChecked = updatedItems.find((i) => i.key === itemKey)?.checked;
+
       setResources((prev) =>
         prev.map((resource) => {
           if (resource.id !== id) return resource;
-          const updatedItems = resource.checklistItems.map((item) =>
-            item.key === itemKey
-              ? { ...item, checked: !item.checked, date: !item.checked ? now : null }
-              : item,
-          );
           const event: StatusEvent = {
             status: "for-checking",
             date: now,
-            remarks: `Checklist item "${CHECKLIST_ITEMS.find((i) => i.key === itemKey)?.label}" ${updatedItems.find((i) => i.key === itemKey)?.checked ? "completed" : "unchecked"}.`,
+            remarks: `Checklist item "${label}" ${isChecked ? "completed" : "unchecked"}.`,
             checklistItems: updatedItems,
           };
           return {
@@ -509,39 +521,24 @@ export function useResources() {
         }),
       );
 
-      // Sync to Supabase
+      // Sync to Supabase — write the checklist the user actually sees
+      // (computed from local state, not a re-read that can race writes).
       withMutation(mutating, dataEpoch, setResources, async () => {
-        const resource = (await supabase
+        const { error } = await supabase
           .from("learning_resources")
-          .select("checking_items")
-          .eq("id", id)
-          .single()) as { data: { checking_items: ChecklistItem[] | null } | null };
-
-        if (resource.data) {
-          const current = normalizeChecklist(resource.data.checking_items);
-          const updatedItems = current.map((item) =>
-            item.key === itemKey
-              ? { ...item, checked: !item.checked, date: !item.checked ? now : null }
-              : item,
-          );
-          const label = CHECKLIST_ITEMS.find((i) => i.key === itemKey)?.label;
-          const isChecked = updatedItems.find((i) => i.key === itemKey)?.checked;
-
-          await supabase
-            .from("learning_resources")
-            .update({
-              checking_items: updatedItems,
-              updated_at: now,
-            })
-            .eq("id", id);
-          await insertHistoryRetry({
-            resource_id: id,
-            status: "for-checking",
-            date: now,
-            remarks: `Checklist item "${label}" ${isChecked ? "completed" : "unchecked"}.`,
+          .update({
             checking_items: updatedItems,
-          });
-        }
+            updated_at: now,
+          })
+          .eq("id", id);
+        if (error) console.error("Failed to save checklist in Supabase", error);
+        await insertHistoryRetry({
+          resource_id: id,
+          status: "for-checking",
+          date: now,
+          remarks: `Checklist item "${label}" ${isChecked ? "completed" : "unchecked"}.`,
+          checking_items: updatedItems,
+        });
       });
     },
     [],
