@@ -255,6 +255,7 @@ async function insertHistoryRetry(
  */
 function withMutation(
   mutating: { current: boolean },
+  dataEpoch: { current: number },
   setResources: (data: LearningResource[]) => void,
   fn: () => Promise<void>,
 ): void {
@@ -263,6 +264,9 @@ function withMutation(
     .catch((e) => console.error("Mutation failed", e))
     .finally(() => {
       mutating.current = false;
+      // Invalidate any fetch already in flight when the write landed —
+      // applying it would visually revert the change the user just made.
+      dataEpoch.current++;
       void fetchResources().then(setResources);
     });
 }
@@ -285,6 +289,9 @@ export function useResources() {
   // refreshes are paused: a poll response read mid-write would replace the
   // optimistic status with stale data (status "goes back", then proceeds).
   const mutating = useRef(false);
+  // dataEpoch discards refreshes that started before a mutation but finish
+  // after it (e.g. a poll that was mid-flight when the user clicked).
+  const dataEpoch = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -307,7 +314,10 @@ export function useResources() {
    */
   const refresh = useCallback(async () => {
     if (mutating.current) return;
+    const epoch = ++dataEpoch.current;
     const data = await fetchResources();
+    // Drop the result if a mutation (or a newer refresh) happened meanwhile.
+    if (mutating.current || epoch !== dataEpoch.current) return;
     setResources(data);
   }, []);
 
@@ -437,7 +447,7 @@ export function useResources() {
       );
 
       // Sync to Supabase
-      withMutation(mutating, setResources, async () => {
+      withMutation(mutating, dataEpoch, setResources, async () => {
         const { error: updErr } = await supabase
           .from("learning_resources")
           .update({
@@ -500,7 +510,7 @@ export function useResources() {
       );
 
       // Sync to Supabase
-      withMutation(mutating, setResources, async () => {
+      withMutation(mutating, dataEpoch, setResources, async () => {
         const resource = (await supabase
           .from("learning_resources")
           .select("checking_items")
@@ -619,7 +629,7 @@ export function useResources() {
     );
 
     // Sync to Supabase
-    withMutation(mutating, setResources, async () => {
+    withMutation(mutating, dataEpoch, setResources, async () => {
       await supabase
         .from("learning_resources")
         .update({
@@ -689,7 +699,7 @@ export function useResources() {
     );
 
     // Sync to Supabase and notify the admin.
-    withMutation(mutating, setResources, async () => {
+    withMutation(mutating, dataEpoch, setResources, async () => {
       await insertHistoryRetry({
         resource_id: id,
         status: target?.status ?? "submitted",
@@ -737,7 +747,7 @@ export function useResources() {
     );
 
     // Sync to Supabase and notify the submitting viewer.
-    withMutation(mutating, setResources, async () => {
+    withMutation(mutating, dataEpoch, setResources, async () => {
       await insertHistoryRetry({
         resource_id: id,
         status: target?.status ?? "submitted",
@@ -763,7 +773,7 @@ export function useResources() {
     setResources((prev) => prev.filter((resource) => resource.id !== id));
 
     // Sync to Supabase (history cascades on delete)
-    withMutation(mutating, setResources, async () => {
+    withMutation(mutating, dataEpoch, setResources, async () => {
       const { error } = await supabase.from("learning_resources").delete().eq("id", id);
       if (error) console.error("Failed to delete resource from Supabase", error);
     });
