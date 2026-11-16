@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 
-import { supabase } from "@/lib/supabase";
+import { supabase, withNetworkRetry } from "@/lib/supabase";
 
 export interface VisitorEntry {
   id: string;
@@ -32,11 +32,13 @@ async function fetchVisitors(): Promise<VisitorEntry[]> {
   const rows: VisitorRow[] = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await supabase
-      .from("visitors")
-      .select("*")
-      .order("visited_at", { ascending: false })
-      .range(from, from + PAGE - 1);
+    const { data, error } = await withNetworkRetry(() =>
+      supabase
+        .from("visitors")
+        .select("*")
+        .order("visited_at", { ascending: false })
+        .range(from, from + PAGE - 1),
+    );
     if (error) {
       console.error("Failed to fetch visitors from Supabase", error);
       break;

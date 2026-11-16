@@ -8,7 +8,7 @@ import {
   type AppNotification,
   type NotificationRow,
 } from "@/lib/notification";
-import { supabase } from "@/lib/supabase";
+import { supabase, withNetworkRetry } from "@/lib/supabase";
 
 /** Fetch notifications relevant to the current user, newest first. */
 async function fetchNotifications(
@@ -29,7 +29,7 @@ async function fetchNotifications(
       ? q.eq("audience", "admin")
       : q.eq("audience", "viewer").eq("target_email", email);
 
-    const { data, error } = await q;
+    const { data, error } = await withNetworkRetry(() => q);
     if (error) {
       console.error("Failed to fetch notifications from Supabase", error);
       break;

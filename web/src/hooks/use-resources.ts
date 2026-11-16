@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { pushNotification } from "@/lib/notification";
-import { supabase } from "@/lib/supabase";
+import { supabase, withNetworkRetry } from "@/lib/supabase";
 import {
   CHECKLIST_ITEMS,
   SEED_RESOURCES,
@@ -125,9 +125,9 @@ function normalizeChecklist(items: ChecklistItem[] | null): ChecklistItem[] {
 
 /** Seed the database with initial resources if the table is empty. */
 async function seedIfEmpty(): Promise<void> {
-  const { count, error } = await supabase
-    .from("learning_resources")
-    .select("*", { count: "exact", head: true });
+  const { count, error } = await withNetworkRetry(() =>
+    supabase.from("learning_resources").select("*", { count: "exact", head: true }),
+  );
   // Never seed on a failed count — a network error must not duplicate data.
   if (error) {
     console.error("Skipping seed: failed to count learning_resources", error);
@@ -186,11 +186,13 @@ async function fetchAllRows<T>(
   const all: T[] = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await supabase
-      .from(table)
-      .select("*")
-      .order(orderColumn, { ascending })
-      .range(from, from + PAGE - 1);
+    const { data, error } = await withNetworkRetry(() =>
+      supabase
+        .from(table)
+        .select("*")
+        .order(orderColumn, { ascending })
+        .range(from, from + PAGE - 1),
+    );
     if (error) {
       console.error(`Failed to fetch ${table} from Supabase`, error);
       break;
