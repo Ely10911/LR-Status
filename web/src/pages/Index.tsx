@@ -88,7 +88,6 @@ import { useVisitors } from "@/hooks/use-visitors";
 import {
   formatDate,
   formatDateTime,
-  getApprovedDate,
   getPublishedDate,
   GRADE_LEVELS,
   LEARNING_AREAS,
@@ -138,38 +137,6 @@ function endOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
   return d;
-}
-
-/**
- * Checks an event date against a preset window (or custom from/to range).
- * Shared by the date-submitted and date-approved filters. Returns false when
- * the date is null and a filter is active, so unapproved LRs are excluded.
- */
-function matchesDateFilter(
-  date: string | null,
-  preset: DatePreset,
-  customFrom: string,
-  customTo: string,
-): boolean {
-  if (preset === ALL) return true;
-  if (!date) return false;
-  const d = new Date(date);
-  if (preset === "custom") {
-    // Custom range: both bounds optional, inclusive of the whole day.
-    if (customFrom && d < startOfDay(new Date(customFrom))) return false;
-    if (customTo && d > endOfDay(new Date(customTo))) return false;
-  } else if (preset === "today") {
-    if (d < startOfDay(new Date())) return false;
-  } else if (preset === "year") {
-    const now = new Date();
-    if (d < new Date(now.getFullYear(), 0, 1)) return false;
-  } else {
-    const days = preset === "7d" ? 7 : preset === "30d" ? 30 : 90;
-    const cutoff = startOfDay(new Date());
-    cutoff.setDate(cutoff.getDate() - (days - 1));
-    if (d < cutoff) return false;
-  }
-  return true;
 }
 
 const Index = () => {
@@ -225,9 +192,6 @@ const Index = () => {
   const [datePreset, setDatePreset] = useState<DatePreset>(ALL);
   const [customDateFrom, setCustomDateFrom] = useState<string>("");
   const [customDateTo, setCustomDateTo] = useState<string>("");
-  const [approvedPreset, setApprovedPreset] = useState<DatePreset>(ALL);
-  const [approvedCustomFrom, setApprovedCustomFrom] = useState<string>("");
-  const [approvedCustomTo, setApprovedCustomTo] = useState<string>("");
   const [addOpen, setAddOpen] = useState<boolean>(false);
   const [editOpen, setEditOpen] = useState<boolean>(false);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
@@ -307,16 +271,23 @@ const Index = () => {
       if (isAdmin && subOfficeFilter !== ALL && resource.subOffice !== subOfficeFilter) {
         return false;
       }
-      if (!matchesDateFilter(resource.dateSubmitted, datePreset, customDateFrom, customDateTo)) {
-        return false;
-      }
-      if (!matchesDateFilter(
-        getApprovedDate(resource),
-        approvedPreset,
-        approvedCustomFrom,
-        approvedCustomTo,
-      )) {
-        return false;
+      if (datePreset !== ALL) {
+        const submitted = new Date(resource.dateSubmitted);
+        if (datePreset === "custom") {
+          // Custom range: both bounds optional, inclusive of the whole day.
+          if (customDateFrom && submitted < startOfDay(new Date(customDateFrom))) return false;
+          if (customDateTo && submitted > endOfDay(new Date(customDateTo))) return false;
+        } else if (datePreset === "today") {
+          if (submitted < startOfDay(new Date())) return false;
+        } else if (datePreset === "year") {
+          const now = new Date();
+          if (submitted < new Date(now.getFullYear(), 0, 1)) return false;
+        } else {
+          const days = datePreset === "7d" ? 7 : datePreset === "30d" ? 30 : 90;
+          const cutoff = startOfDay(new Date());
+          cutoff.setDate(cutoff.getDate() - (days - 1));
+          if (submitted < cutoff) return false;
+        }
       }
       if (!query) return true;
       return (
@@ -339,9 +310,6 @@ const Index = () => {
     datePreset,
     customDateFrom,
     customDateTo,
-    approvedPreset,
-    approvedCustomFrom,
-    approvedCustomTo,
   ]);
 
   const hasActiveFilters =
@@ -350,7 +318,6 @@ const Index = () => {
     gradeFilter !== ALL ||
     (isAdmin && subOfficeFilter !== ALL) ||
     datePreset !== ALL ||
-    approvedPreset !== ALL ||
     Boolean(search);
 
   const clearAllFilters = () => {
@@ -361,9 +328,6 @@ const Index = () => {
     setDatePreset(ALL);
     setCustomDateFrom("");
     setCustomDateTo("");
-    setApprovedPreset(ALL);
-    setApprovedCustomFrom("");
-    setApprovedCustomTo("");
     setSearch("");
   };
 
@@ -1291,38 +1255,6 @@ const Index = () => {
                 onChange={(e) => setCustomDateTo(e.target.value)}
                 className="bg-card sm:w-36"
                 aria-label="Submitted to date"
-              />
-            </div>
-          )}
-          <Select value={approvedPreset} onValueChange={(v) => setApprovedPreset(v as DatePreset)}>
-            <SelectTrigger className="bg-card sm:w-40">
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <SelectValue placeholder="Date approved" />
-            </SelectTrigger>
-            <SelectContent>
-              {DATE_PRESETS.map((preset) => (
-                <SelectItem key={preset.value} value={preset.value}>
-                  {preset.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {approvedPreset === "custom" && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                value={approvedCustomFrom}
-                onChange={(e) => setApprovedCustomFrom(e.target.value)}
-                className="bg-card sm:w-36"
-                aria-label="Approved from date"
-              />
-              <span className="text-sm text-muted-foreground">to</span>
-              <Input
-                type="date"
-                value={approvedCustomTo}
-                onChange={(e) => setApprovedCustomTo(e.target.value)}
-                className="bg-card sm:w-36"
-                aria-label="Approved to date"
               />
             </div>
           )}
