@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  Eye,
   FileText,
   Loader2,
   PackageCheck,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/certificate";
 import { formatDate } from "@/lib/lr";
 import { cn } from "@/lib/utils";
+import { RequestSlipViewer } from "@/components/lr/RequestSlipViewer";
 
 const ALL = "all";
 
@@ -102,6 +104,13 @@ export function CertificateRequestsSection({
   const [search, setSearch] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<CertificateRequestStatus | typeof ALL>(ALL);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [viewingRequest, setViewingRequest] = useState<CertificateRequest | null>(null);
+  const [viewerOpen, setViewerOpen] = useState<boolean>(false);
+
+  const openSlipViewer = (req: CertificateRequest) => {
+    setViewingRequest(req);
+    setViewerOpen(true);
+  };
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -332,7 +341,14 @@ export function CertificateRequestsSection({
                     }
                   >
                     <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
-                      {req.slipNumber}
+                      <button
+                        type="button"
+                        onClick={() => openSlipViewer(req)}
+                        className="underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                        title="View Request Slip"
+                      >
+                        {req.slipNumber}
+                      </button>
                     </TableCell>
                     <TableCell>
                       <p className="font-semibold">{req.certName}</p>
@@ -399,6 +415,19 @@ export function CertificateRequestsSection({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
+                              onClick={() => openSlipViewer(req)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>View Request Slip</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
                               onClick={() => handleDownload(req)}
                               disabled={downloadingId === req.id}
                             >
@@ -436,6 +465,12 @@ export function CertificateRequestsSection({
           </TableBody>
         </Table>
       </div>
+
+      <RequestSlipViewer
+        request={viewingRequest}
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+      />
     </section>
   );
 }

@@ -136,3 +136,37 @@ a[href*="rork.app"],
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
+/*
+ * Request slip printing: while the slip viewer dialog is open, a print-only
+ * copy of the slip (#request-slip-print-root) is portaled to the end of body.
+ * Printing shows only that copy.
+ */
+.print-slip-print-only {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-slip-print-only {
+    display: block;
+  }
+
+  #request-slip-print-root,
+  #request-slip-print-root * {
+    visibility: visible;
+  }
+
+  #request-slip-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    border: none;
+  }
+}
