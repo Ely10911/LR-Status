@@ -147,6 +147,11 @@ a[href*="rork.app"],
 }
 
 @media print {
+  @page {
+    size: A5 portrait;
+    margin: 8mm;
+  }
+
   body * {
     visibility: hidden;
   }

@@ -110,7 +110,7 @@ function RequestSlipPaper({ request, print = false }: { request: CertificateRequ
       className={
         print
           ? "print-slip-print-only mx-auto bg-white text-black"
-          : "mx-auto w-full max-w-[620px] bg-white text-black shadow-md"
+          : "mx-auto w-full max-w-[420px] bg-white text-black shadow-md"
       }
     >
       <div className="border-t-4 border-[#003366] px-8 py-6" style={{ borderTopColor: "#003366" }}>
