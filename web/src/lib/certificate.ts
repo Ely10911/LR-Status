@@ -50,202 +50,204 @@ export interface GenerateRequestSlipInput {
 }
 
 /**
- * Generate an A5 request slip PDF for certificate of recognition.
- * This replaces the old certificate template with a formal request slip
- * that includes an automatic sequential request slip number.
+ * Generate a one-page A5 landscape request slip PDF for certificate of
+ * recognition. The details are laid out in two columns so everything fits
+ * the short page. This replaces the old certificate template with a formal
+ * request slip that includes an automatic sequential request slip number.
  */
 export async function generateRequestSlipPDF(input: GenerateRequestSlipInput): Promise<jsPDF> {
   const doc = new jsPDF({
-    orientation: "portrait",
+    orientation: "landscape",
     unit: "pt",
     format: "a5",
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 34;
+  const margin = 30;
   const centerX = pageWidth / 2;
   const contentWidth = pageWidth - margin * 2;
 
   // ---- Header band ----
   doc.setFillColor(0, 51, 102);
-  doc.rect(0, 0, pageWidth, 6, "F");
+  doc.rect(0, 0, pageWidth, 5, "F");
 
   // ---- Logo placeholder (text-based since we removed image template) ----
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(0, 51, 102);
-  doc.text("Republic of the Philippines", centerX, 28, { align: "center" });
+  doc.text("Republic of the Philippines", centerX, 22, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text("Department of Education", centerX, 40, { align: "center" });
-  doc.text("REGION IV-A CALABARZON", centerX, 51, { align: "center" });
+  doc.setFontSize(7.5);
+  doc.text("Department of Education — REGION IV-A CALABARZON", centerX, 32, { align: "center" });
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("SCHOOLS DIVISION OF BATANGAS", centerX, 63, { align: "center" });
+  doc.setFontSize(9.5);
+  doc.text("SCHOOLS DIVISION OF BATANGAS", centerX, 43, { align: "center" });
   doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(80, 80, 80);
-  doc.text("Learning Resource Management Section", centerX, 74, { align: "center" });
+  doc.text("Learning Resource Management Section", centerX, 52, { align: "center" });
 
   // Decorative line under header
   doc.setDrawColor(0, 51, 102);
   doc.setLineWidth(1.2);
-  doc.line(margin, 82, pageWidth - margin, 82);
+  doc.line(margin, 59, pageWidth - margin, 59);
   doc.setLineWidth(0.4);
-  doc.line(margin, 85, pageWidth - margin, 85);
+  doc.line(margin, 61.5, pageWidth - margin, 61.5);
 
-  // ---- Request slip banner ----
+  // ---- Request slip banner + date + slip number, all on one row ----
+  const bannerY = 70;
+  const bannerHeight = 22;
+
+  // Banner (left)
   doc.setFillColor(245, 248, 252);
-  doc.rect(margin, 93, contentWidth, 30, "F");
+  doc.rect(margin, bannerY, 190, bannerHeight, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setTextColor(0, 51, 102);
-  doc.text("REQUEST SLIP", centerX, 112, { align: "center" });
+  doc.text("REQUEST SLIP", margin + 95, bannerY + 15, { align: "center" });
 
-  // ---- Slip number box (top right) ----
-  const slipBoxWidth = 136;
-  const slipBoxX = pageWidth - margin - slipBoxWidth;
-  const slipBoxY = 133;
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.8);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(slipBoxX, slipBoxY, slipBoxWidth, 30, "FD");
+  // Date requested (middle)
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
   doc.setTextColor(100, 100, 100);
-  doc.text("Request Slip No.", slipBoxX + 7, slipBoxY + 10);
+  doc.text("Date Requested:", margin + 210, bannerY + 8);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10.5);
-  doc.setTextColor(0, 51, 102);
-  doc.text(input.slipNumber, slipBoxX + 7, slipBoxY + 24);
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(formatDate(input.requestedAt), margin + 210, bannerY + 18);
 
-  // ---- Date requested (top left) ----
+  // Slip number box (right)
+  const slipBoxWidth = 150;
+  const slipBoxX = pageWidth - margin - slipBoxWidth;
+  doc.setDrawColor(0, 51, 102);
+  doc.setLineWidth(0.8);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(slipBoxX, bannerY - 2, slipBoxWidth, bannerHeight + 4, "FD");
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(100, 100, 100);
-  doc.text("Date Requested:", margin, slipBoxY + 10);
+  doc.text("Request Slip No.", slipBoxX + 7, bannerY + 7);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.setTextColor(0, 0, 0);
-  doc.text(formatDate(input.requestedAt), margin, slipBoxY + 24);
+  doc.setTextColor(0, 51, 102);
+  doc.text(input.slipNumber, slipBoxX + 7, bannerY + 18);
 
   // ---- Divider ----
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.4);
-  doc.line(margin, slipBoxY + 42, pageWidth - margin, slipBoxY + 42);
+  doc.line(margin, bannerY + bannerHeight + 12, pageWidth - margin, bannerY + bannerHeight + 12);
 
-  // ---- Request details section ----
-  let cursorY = slipBoxY + 56;
-  const labelX = margin;
-  const valueX = margin + 100;
-  const rowHeight = 19;
+  // ---- Two-column details: request details (left) + certificate details (right) ----
+  const sectionsY = bannerY + bannerHeight + 24;
+  const rowHeight = 12.5;
+  const leftX = margin;
+  const leftValueX = leftX + 62;
+  const leftWrapWidth = 180;
+  const rightX = margin + 272;
+  const rightValueX = rightX + 72;
+  const rightWrapWidth = contentWidth - 272 - 72;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(0, 51, 102);
-  doc.text("REQUEST DETAILS", margin, cursorY);
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.6);
-  doc.line(margin, cursorY + 3, pageWidth - margin, cursorY + 3);
-  cursorY += 16;
-
-  const detailRows: { label: string; value: string }[] = [
-    { label: "Requested By:", value: input.requesterName },
-    { label: "Email:", value: input.requesterEmail },
-    { label: "Date Needed:", value: formatDate(input.certDate) },
-  ];
-
-  for (const row of detailRows) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.text(row.label, labelX, cursorY);
+  const drawSectionTitle = (title: string, x: number, width: number) => {
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    const wrappedValue = doc.splitTextToSize(row.value, contentWidth - 108);
-    doc.text(wrappedValue, valueX, cursorY);
-    cursorY += rowHeight;
-  }
+    doc.setFontSize(8.5);
+    doc.setTextColor(0, 51, 102);
+    doc.text(title, x, sectionsY);
+    doc.setDrawColor(0, 51, 102);
+    doc.setLineWidth(0.6);
+    doc.line(x, sectionsY + 3, x + width, sectionsY + 3);
+  };
 
-  cursorY += 5;
-
-  // ---- Certificate details section ----
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(0, 51, 102);
-  doc.text("CERTIFICATE DETAILS", margin, cursorY);
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.6);
-  doc.line(margin, cursorY + 3, pageWidth - margin, cursorY + 3);
-  cursorY += 16;
-
-  const certRows: { label: string; value: string }[] = [
-    { label: "Name to Certify:", value: input.certName },
-    { label: "Email:", value: input.certEmail },
-    { label: "Position:", value: input.certPosition },
-    { label: "School:", value: input.certSchool },
-    { label: "LR Code:", value: input.resourceCode },
-    { label: "Resource Title:", value: input.resourceTitle },
-    { label: "Resource Type:", value: input.resourceType },
-  ];
-
-  for (const row of certRows) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.text(row.label, labelX, cursorY);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    const wrappedValue = doc.splitTextToSize(row.value, contentWidth - 108);
-    doc.text(wrappedValue, valueX, cursorY);
-    if (wrappedValue.length > 1) {
-      cursorY += rowHeight * wrappedValue.length;
-    } else {
-      cursorY += rowHeight;
+  const drawRows = (
+    rows: { label: string; value: string }[],
+    labelX: number,
+    valueX: number,
+    wrapWidth: number,
+  ): number => {
+    let y = sectionsY + 14;
+    for (const row of rows) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(80, 80, 80);
+      doc.text(row.label, labelX, y);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      const wrappedValue = doc.splitTextToSize(row.value, wrapWidth);
+      doc.text(wrappedValue, valueX, y);
+      y += rowHeight * wrappedValue.length;
     }
-  }
+    return y;
+  };
 
-  cursorY += 10;
+  // Left column: request details
+  drawSectionTitle("REQUEST DETAILS", leftX, 250);
+  const leftEnd = drawRows(
+    [
+      { label: "Requested By:", value: input.requesterName },
+      { label: "Email:", value: input.requesterEmail },
+      { label: "Date Needed:", value: formatDate(input.certDate) },
+    ],
+    leftX,
+    leftValueX,
+    leftWrapWidth,
+  );
 
-  // ---- Purpose section ----
+  // Right column: certificate details
+  drawSectionTitle("CERTIFICATE DETAILS", rightX, contentWidth - 272);
+  const rightEnd = drawRows(
+    [
+      { label: "Name to Certify:", value: input.certName },
+      { label: "Email:", value: input.certEmail },
+      { label: "Position:", value: input.certPosition },
+      { label: "School:", value: input.certSchool },
+      { label: "LR Code:", value: input.resourceCode },
+      { label: "Resource Title:", value: input.resourceTitle },
+      { label: "Resource Type:", value: input.resourceType },
+    ],
+    rightX,
+    rightValueX,
+    rightWrapWidth,
+  );
+
+  // ---- Purpose section (full width, below the columns) ----
+  let cursorY = Math.max(leftEnd, rightEnd) + 8;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(60, 60, 60);
   const purposeText =
     "Purpose: Request for Certificate of Recognition for the above-named individual " +
     "in connection with the Division Quality Assurance of DepEd-Developed Learning Resources.";
   const purposeLines = doc.splitTextToSize(purposeText, contentWidth);
   doc.text(purposeLines, margin, cursorY);
-  cursorY += purposeLines.length * 10 + 12;
+  cursorY += purposeLines.length * 9 + 10;
 
   // ---- Signature lines ----
-  const signY = Math.max(cursorY, pageHeight - 130);
+  const signY = Math.max(cursorY, pageHeight - 78);
 
   // Requested by
   doc.setDrawColor(120, 120, 120);
   doc.setLineWidth(0.4);
-  doc.line(margin, signY, margin + 130, signY);
+  doc.line(margin, signY, margin + 140, signY);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(80, 80, 80);
-  doc.text("Requested by (Signature over Printed Name)", margin, signY + 10);
+  doc.text("Requested by (Signature over Printed Name)", margin, signY + 9);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(0, 0, 0);
   doc.text(input.requesterName, margin, signY - 3);
 
   // Received by
-  const receivedX = pageWidth - margin - 130;
+  const receivedX = pageWidth - margin - 140;
   doc.setDrawColor(120, 120, 120);
-  doc.line(receivedX, signY, receivedX + 130, signY);
+  doc.line(receivedX, signY, receivedX + 140, signY);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(80, 80, 80);
-  doc.text("Received by (LRMS Personnel)", receivedX, signY + 10);
+  doc.text("Received by (LRMS Personnel)", receivedX, signY + 9);
 
   // ---- Footer band ----
-  const footerY = pageHeight - 46;
+  const footerY = pageHeight - 34;
   doc.setDrawColor(0, 51, 102);
   doc.setLineWidth(0.8);
   doc.line(margin, footerY, pageWidth - margin, footerY);
@@ -254,24 +256,23 @@ export async function generateRequestSlipPDF(input: GenerateRequestSlipInput): P
 
   // ---- Validity note ----
   doc.setFont("helvetica", "italic");
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(160, 40, 40);
   const noteText =
     "NOTE: This electronic copy is not valid until it is signed and released " +
     "by the Learning Resource Management Section.";
   const noteLines = doc.splitTextToSize(noteText, contentWidth);
-  doc.text(noteLines, centerX, footerY + 12, { align: "center" });
+  doc.text(noteLines, centerX, footerY + 10, { align: "center" });
 
   // ---- Footer info ----
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(100, 100, 100);
-  doc.text("Provincial Sports Complex, Bolbok, 4200 Batangas City", centerX, footerY + 25, { align: "center" });
-  doc.text("(043) 722-1840 / 722-1796 / deped.batangas@deped.gov.ph", centerX, footerY + 34, { align: "center" });
+  doc.text("Provincial Sports Complex, Bolbok, 4200 Batangas City  ·  (043) 722-1840 / 722-1796  ·  deped.batangas@deped.gov.ph", centerX, footerY + 21, { align: "center" });
 
   // ---- Bottom border band ----
   doc.setFillColor(0, 51, 102);
-  doc.rect(0, pageHeight - 5, pageWidth, 5, "F");
+  doc.rect(0, pageHeight - 4, pageWidth, 4, "F");
 
   return doc;
 }
