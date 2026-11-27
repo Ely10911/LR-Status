@@ -1350,19 +1350,20 @@ const Index = () => {
 
         {/* Resources table */}
         <section className="mt-4 overflow-hidden rounded-xl border bg-card shadow-sm">
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/60 hover:bg-muted/60">
-                <TableHead className="w-[110px]">LR Code</TableHead>
-                <TableHead className="min-w-[240px]">Title</TableHead>
-                <TableHead className="hidden md:table-cell">Learning Area</TableHead>
-                <TableHead className="hidden lg:table-cell">Grade</TableHead>
-                <TableHead className="hidden xl:table-cell">School</TableHead>
-                <TableHead className="hidden sm:table-cell">Submitted</TableHead>
-                <TableHead className="hidden md:table-cell">Published</TableHead>
-                <TableHead className="hidden md:table-cell">Last Update</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-16 md:w-[92px]">LR Code</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="hidden w-[112px] md:table-cell">Learning Area</TableHead>
+                <TableHead className="hidden w-[80px] lg:table-cell">Grade</TableHead>
+                <TableHead className="hidden w-[132px] xl:table-cell">School</TableHead>
+                <TableHead className="hidden w-[98px] sm:table-cell">Submitted</TableHead>
+                <TableHead className="hidden w-[98px] md:table-cell">Published</TableHead>
+                <TableHead className="hidden w-[98px] md:table-cell">Last Update</TableHead>
+                <TableHead className="w-[104px] md:w-[118px]">Status</TableHead>
+                <TableHead className="w-9 md:w-11" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1387,14 +1388,14 @@ const Index = () => {
                       {resource.code}
                     </TableCell>
                     <TableCell>
-                      <p className="font-semibold leading-snug">{resource.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+                      <p className="font-semibold leading-snug break-words">{resource.title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground break-words">
                         {resource.resourceType} · {resource.school}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {resource.subOffice}
                       </p>
-                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-foreground/80">
+                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-foreground/80 [overflow-wrap:anywhere]">
                         <User2 className="h-3 w-3 shrink-0" />
                         {resource.developer}
                         {isAdmin && resource.submittedByEmail && (
@@ -1505,6 +1506,7 @@ const Index = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </section>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
