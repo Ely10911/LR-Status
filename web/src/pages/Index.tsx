@@ -671,7 +671,7 @@ const Index = () => {
       {/* Header */}
       <header className="header-texture text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
               {/* SDO Batangas Logo */}
               <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-lg shadow-black/20">
@@ -705,7 +705,7 @@ const Index = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {isAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
