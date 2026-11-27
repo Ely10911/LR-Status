@@ -42,6 +42,7 @@ import {
 import { toast } from "sonner";
 
 import { AddResourceDialog } from "@/components/lr/AddResourceDialog";
+import { StatusReportDialog } from "@/components/lr/StatusReportDialog";
 import { SubmitLRDialog } from "@/components/lr/SubmitLRDialog";
 import { CertificateRequestDialog } from "@/components/lr/CertificateRequestDialog";
 import { CertificateRequestsSection } from "@/components/lr/CertificateRequestsSection";
@@ -208,6 +209,9 @@ const Index = () => {
 
   // Certificate request state
   const [certRequestOpen, setCertRequestOpen] = useState<boolean>(false);
+
+  // Status report download state
+  const [reportOpen, setReportOpen] = useState<boolean>(false);
 
   // Viewer LR submission state
   const [submitLROpen, setSubmitLROpen] = useState<boolean>(false);
@@ -739,6 +743,20 @@ const Index = () => {
                       </span>
                     </div>
                   )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => setReportOpen(true)}
+                        size="lg"
+                        variant="outline"
+                        className="gap-2 border-white/20 bg-white/10 text-primary-foreground hover:bg-white/20"
+                      >
+                        <Download className="h-5 w-5" />
+                        <span className="hidden sm:inline">Report</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download status report (CSV)</TooltipContent>
+                  </Tooltip>
                   <Button
                     onClick={() => setAddOpen(true)}
                     size="lg"
@@ -1661,6 +1679,13 @@ const Index = () => {
           onOpenChange={setAddOpen}
           onSubmit={addResource}
           existingResources={resources}
+        />
+      )}
+      {isAdmin && (
+        <StatusReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          resources={visibleResources}
         />
       )}
       {editTarget && (isAdmin || isResubmit) && (
