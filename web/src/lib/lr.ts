@@ -317,6 +317,17 @@ export function getPublishedDate(resource: LearningResource): string | null {
   return null;
 }
 
+/**
+ * The date an LR became Approved — the latest "approved" entry in its
+ * status history — or null when it has not been approved yet.
+ */
+export function getApprovedDate(resource: LearningResource): string | null {
+  for (let i = resource.history.length - 1; i >= 0; i--) {
+    if (resource.history[i].status === "approved") return resource.history[i].date;
+  }
+  return null;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-PH", {
     year: "numeric",
